@@ -103,10 +103,11 @@ export default function AdminUsersPage() {
         </div>
         <button
           onClick={() => { setShowCreate(!showCreate); setCreateError(""); setCreateSuccess(""); }}
-          className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800"
+          className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 min-h-[44px]"
         >
           <Plus size={16} />
-          Create User
+          <span className="hidden sm:inline">Create User</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 
@@ -316,7 +317,7 @@ export default function AdminUsersPage() {
               </div>
               <button
                 onClick={() => deleteUser(user.id, user.firstName || user.name || user.email)}
-                className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 flex-shrink-0"
+                className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <Trash2 size={14} />
               </button>
@@ -326,7 +327,7 @@ export default function AdminUsersPage() {
                 <select
                   value={user.role}
                   onChange={(e) => updateRole(user.id, e.target.value)}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-gray-900"
                 >
                   <option value="CUSTOMER">Customer</option>
                   <option value="ADMIN">Admin</option>

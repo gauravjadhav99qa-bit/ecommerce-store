@@ -138,7 +138,7 @@ export default function AdminCouponsPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px]">
             <thead>
@@ -203,6 +203,46 @@ export default function AdminCouponsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {coupons.map((coupon) => (
+          <div key={coupon.id} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Tag size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="font-mono font-semibold text-sm truncate">{coupon.code}</span>
+                  <button onClick={() => copyCode(coupon.code, coupon.id)} className="text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center -my-2">
+                    {copiedId === coupon.id ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  {coupon.discountType === "percentage" ? `${coupon.value}% off` : `₹${(coupon.value / 100).toFixed(0)} off`}
+                  {" · "}Min {coupon.minOrder > 0 ? `₹${(coupon.minOrder / 100).toFixed(0)}` : "—"}
+                  {" · "}{coupon.usedCount}/{coupon.maxUses} uses
+                </div>
+                <div className="mt-0.5 text-[11px] text-gray-400">
+                  Expires {new Date(coupon.expiresAt).toLocaleDateString("en-IN")}
+                </div>
+              </div>
+              <span className={`px-2 py-1 text-[10px] rounded-full flex-shrink-0 ${
+                coupon.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+              }`}>
+                {coupon.isActive ? "Active" : "Inactive"}
+              </span>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-end gap-1">
+              <button onClick={() => handleEdit(coupon)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <Pencil size={14} />
+              </button>
+              <button onClick={() => handleDelete(coupon.id)} className="p-2 hover:bg-red-50 text-red-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {showModal && (

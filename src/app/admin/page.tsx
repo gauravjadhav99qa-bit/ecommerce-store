@@ -73,7 +73,7 @@ export default function AdminDashboard() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="text-sm text-gray-500">
+        <div className="hidden sm:block text-sm text-gray-500">
           {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
         </div>
       </div>
@@ -128,7 +128,8 @@ export default function AdminDashboard() {
             <h2 className="font-semibold">Revenue — Last 7 Days</h2>
             <TrendingUp size={18} className="text-gray-400" />
           </div>
-          <div className="flex items-end gap-3 h-40">
+          <div className="flex items-end gap-3 h-40 overflow-x-auto pb-1">
+            <div className="flex items-end gap-3 h-40 min-w-[420px] w-full">
             {data.revenueByDay.map((day, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <span className="text-[10px] text-gray-500">₹{(day.revenue / 100).toLocaleString("en-IN")}</span>
@@ -139,6 +140,7 @@ export default function AdminDashboard() {
                 <span className="text-[10px] text-gray-400">{day.date}</span>
               </div>
             ))}
+            </div>
           </div>
         </div>
 
@@ -245,7 +247,7 @@ export default function AdminDashboard() {
             View all <ArrowUpRight size={14} />
           </Link>
         </div>
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
@@ -285,6 +287,27 @@ export default function AdminDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden divide-y divide-gray-50">
+          {data.recentOrders.map((order) => (
+            <Link key={order.id} href={`/admin/orders?id=${order.id}`} className="block p-4 hover:bg-gray-50">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-sm">{order.orderNumber}</div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {order.user?.name || order.shippingName || "Guest"} · {order.user?.email || order.shippingEmail}
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-0.5">{new Date(order.createdAt).toLocaleDateString("en-IN")}</div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-sm font-medium">₹{(order.total / 100).toLocaleString("en-IN")}</div>
+                  <div className="mt-1"><StatusBadge status={order.status} /></div>
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

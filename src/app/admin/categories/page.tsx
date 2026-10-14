@@ -94,52 +94,83 @@ export default function AdminCategoriesPage() {
           <p className="text-gray-500 text-sm">No categories yet. Add one to get started.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px]">
-              <thead>
-                <tr className="text-left text-xs sm:text-sm text-gray-500 border-b border-gray-200">
-                  <th className="p-3 sm:p-4">Name</th>
-                  <th className="p-3 sm:p-4 hidden sm:table-cell">Slug</th>
-                  <th className="p-3 sm:p-4">Products</th>
-                  <th className="p-3 sm:p-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((category) => (
-                  <tr key={category.id} className="border-b border-gray-100">
-                    <td className="p-3 sm:p-4">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
-                          {category.image ? (
-                            <img src={category.image} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <FolderOpen size={16} className="text-gray-400" />
-                          )}
-                        </div>
-                        <span className="font-medium text-xs sm:text-sm">{category.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-3 sm:p-4 text-gray-500 text-xs sm:text-sm hidden sm:table-cell">
-                      {category.slug}
-                    </td>
-                    <td className="p-3 sm:p-4 text-xs sm:text-sm">{category._count.products}</td>
-                    <td className="p-3 sm:p-4">
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        <button onClick={() => handleEdit(category)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
-                          <Pencil size={14} />
-                        </button>
-                        <button onClick={() => handleDelete(category.id)} className="p-2 hover:bg-red-50 text-red-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+        <>
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[500px]">
+                <thead>
+                  <tr className="text-left text-xs sm:text-sm text-gray-500 border-b border-gray-200">
+                    <th className="p-3 sm:p-4">Name</th>
+                    <th className="p-3 sm:p-4 hidden sm:table-cell">Slug</th>
+                    <th className="p-3 sm:p-4">Products</th>
+                    <th className="p-3 sm:p-4">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {categories.map((category) => (
+                    <tr key={category.id} className="border-b border-gray-100">
+                      <td className="p-3 sm:p-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            {category.image ? (
+                              <img src={category.image} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <FolderOpen size={16} className="text-gray-400" />
+                            )}
+                          </div>
+                          <span className="font-medium text-xs sm:text-sm">{category.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 sm:p-4 text-gray-500 text-xs sm:text-sm hidden sm:table-cell">
+                        {category.slug}
+                      </td>
+                      <td className="p-3 sm:p-4 text-xs sm:text-sm">{category._count.products}</td>
+                      <td className="p-3 sm:p-4">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <button onClick={() => handleEdit(category)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => handleDelete(category.id)} className="p-2 hover:bg-red-50 text-red-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {categories.map((category) => (
+              <div key={category.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {category.image ? (
+                      <img src={category.image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <FolderOpen size={16} className="text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{category.name}</div>
+                    <div className="text-xs text-gray-500">{category._count.products} products · {category.slug}</div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => handleEdit(category)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
+                      <Pencil size={14} />
+                    </button>
+                    <button onClick={() => handleDelete(category.id)} className="p-2 hover:bg-red-50 text-red-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {showModal && (
