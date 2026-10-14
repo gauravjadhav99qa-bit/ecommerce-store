@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/stores/cart";
 import {
   ShoppingBag,
@@ -16,16 +17,30 @@ import {
   Heart,
   Sparkles,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Logo from "@/components/Logo";
 import { useWishlist } from "@/stores/wishlist";
 
 type CategoryLink = { name: string; slug: string };
 
+type Suggestion = {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  image: string | null;
+};
+
 export default function Header() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
   const [categories, setCategories] = useState<CategoryLink[]>([]);
   const [announcement, setAnnouncement] = useState(
     "Instant PDF downloads — print at home today."
@@ -46,6 +61,78 @@ export default function Header() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      fetch(`/api/products?search=${encodeURIComponent(searchQuery.trim())}&limit=6`)
+        .then((r) => r.json())
+        .then((data) => {
+          const list: Suggestion[] = (data?.products || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            price: p.price,
+            image: p.images ? JSON.parse(p.images)[0] : null,
+          }));
+          setSuggestions(list);
+          setShowSuggestions(true);
+          setHighlighted(-1);
+        })
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const submitSearch = (q: string) => {
+    const query = q.trim();
+    if (!query) return;
+    setShowSuggestions(false);
+    setSearchOpen(false);
+    router.push(`/products?search=${encodeURIComponent(query)}`);
+  };
+
+  const onSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitSearch(searchQuery);
+      }
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlighted((h) => (h + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted((h) => (h <= 0 ? suggestions.length - 1 : h - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (highlighted >= 0 && suggestions[highlighted]) {
+        setShowSuggestions(false);
+        setSearchOpen(false);
+        router.push(`/products/${suggestions[highlighted].slug}`);
+      } else {
+        submitSearch(searchQuery);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  };
 
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? "hidden" : "unset";
@@ -153,19 +240,69 @@ export default function Header() {
           </div>
 
           {searchOpen && (
-            <div className="pb-3 md:pb-4">
-              <form action="/products" method="get" className="relative">
+            <div className="pb-3 md:pb-4" ref={searchWrapRef}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submitSearch(searchQuery);
+                }}
+                className="relative"
+              >
                 <Search
                   size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft/60"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft/60 z-10"
                 />
                 <input
                   type="text"
                   name="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={onSearchKeyDown}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                   placeholder="Search colouring books, worksheets, planners..."
                   autoFocus
+                  autoComplete="off"
                   className="w-full pl-10 pr-4 py-2.5 bg-cream border border-cream-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-berry focus:border-transparent"
                 />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-cream-dark rounded-lg shadow-lg z-50 overflow-hidden">
+                    {suggestions.map((s, i) => (
+                      <Link
+                        key={s.id}
+                        href={`/products/${s.slug}`}
+                        onClick={() => {
+                          setShowSuggestions(false);
+                          setSearchOpen(false);
+                        }}
+                        onMouseEnter={() => setHighlighted(i)}
+                        className={`flex items-center gap-3 px-3 py-2.5 border-b border-cream-dark last:border-0 transition-colors ${
+                          i === highlighted ? "bg-cream" : "bg-white"
+                        }`}
+                      >
+                        {s.image && (
+                          <img
+                            src={s.image}
+                            alt=""
+                            className="w-8 h-9 object-contain bg-cream rounded flex-shrink-0"
+                          />
+                        )}
+                        <span className="flex-1 text-sm text-ink truncate">
+                          {s.name}
+                        </span>
+                        <span className="text-xs font-semibold text-berry flex-shrink-0">
+                          ₹{(s.price / 100).toFixed(0)}
+                        </span>
+                      </Link>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => submitSearch(searchQuery)}
+                      className="w-full text-left px-3 py-2.5 bg-cream text-sm font-semibold text-berry hover:bg-cream-dark transition-colors"
+                    >
+                      See all results for “{searchQuery.trim()}” →
+                    </button>
+                  </div>
+                )}
               </form>
             </div>
           )}

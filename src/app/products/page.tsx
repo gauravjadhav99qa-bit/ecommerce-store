@@ -46,10 +46,18 @@ export default async function ProductsPage({
     isDigital: true,
     ...(category ? { category: { slug: category } } : {}),
     ...(featured ? { featured: true } : {}),
-    ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { description: { contains: search, mode: "insensitive" as const } },
+            { tags: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
     ...(maxPrice ? { price: { lte: maxPrice } } : {}),
     ...(ageTags
-      ? { OR: ageTags.map((t) => ({ tags: { contains: t, mode: "insensitive" as const } })) }
+      ? { AND: ageTags.map((t) => ({ tags: { contains: t, mode: "insensitive" as const } })) }
       : {}),
   };
 

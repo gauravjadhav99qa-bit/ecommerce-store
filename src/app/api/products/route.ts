@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-interface WhereClause {
-  isActive: boolean;
-  category?: { slug: string };
-  featured?: boolean;
-  name?: { contains: string };
-}
-
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -15,15 +8,22 @@ export async function GET(req: NextRequest) {
     const featured = searchParams.get("featured");
     const search = searchParams.get("search");
     const sort = searchParams.get("sort") || "newest";
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    const where: WhereClause = { isActive: true };
+    const where: any = { isActive: true, isDigital: true };
     if (category) where.category = { slug: category };
     if (featured === "true") where.featured = true;
-    if (search) where.name = { contains: search };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+        { tags: { contains: search, mode: "insensitive" } },
+        { category: { name: { contains: search, mode: "insensitive" } } },
+      ];
+    }
 
-    const orderBy: Record<string, string> =
+    const orderBy: any =
       sort === "price_asc"
         ? { price: "asc" }
         : sort === "price_desc"
