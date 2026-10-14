@@ -13,6 +13,26 @@ declare global {
   }
 }
 
+const SAVED_DETAILS_KEY = "gt_checkout_details";
+
+function loadSavedDetails(): { name: string; email: string; phone: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SAVED_DETAILS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.email === "string") return parsed;
+  } catch {}
+  return null;
+}
+
+function saveDetails(details: { name: string; email: string; phone: string }) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(SAVED_DETAILS_KEY, JSON.stringify(details));
+  } catch {}
+}
+
 export default function CheckoutPage() {
   const { items, getTotal, clearCart } = useCart();
   const { data: session } = useSession();
@@ -21,7 +41,11 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const total = getTotal();
 
-  const [form, setForm] = useState({ name: "", email: "", phone: "" });
+  const [form, setForm] = useState<{ name: string; email: string; phone: string }>(() => ({
+    name: "",
+    email: "",
+    phone: "",
+  }));
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [couponSuccess, setCouponSuccess] = useState("");
@@ -37,6 +61,17 @@ export default function CheckoutPage() {
   const canPay = detailsReady && items.length > 0 && !loading;
 
   useEffect(() => {
+    const saved = loadSavedDetails();
+    if (saved) {
+      setForm((prev) => ({
+        name: prev.name || saved.name || "",
+        email: prev.email || saved.email || "",
+        phone: prev.phone || saved.phone || "",
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
     if (session?.user) {
       setForm((prev) => ({
         name: prev.name || session.user?.name || "",
@@ -45,6 +80,11 @@ export default function CheckoutPage() {
       }));
     }
   }, [session]);
+
+  // Persist details once they are valid so next checkout is prefilled.
+  useEffect(() => {
+    if (detailsReady) saveDetails(form);
+  }, [detailsReady, form]);
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
