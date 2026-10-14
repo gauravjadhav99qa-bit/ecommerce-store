@@ -20,7 +20,7 @@ interface Order {
   shippingPhone: string | null;
   shippingAddr: string | null;
   createdAt: string;
-  user: { name: string | null; email: string; phone: string | null };
+  user: { name: string | null; email: string; phone: string | null } | null;
   items: OrderItem[];
 }
 
@@ -77,8 +77,8 @@ export default function AdminOrdersPage() {
     const q = search.toLowerCase();
     return (
       o.orderNumber.toLowerCase().includes(q) ||
-      o.user.name?.toLowerCase().includes(q) ||
-      o.user.email.toLowerCase().includes(q) ||
+      o.user?.name?.toLowerCase().includes(q) ||
+      o.user?.email?.toLowerCase().includes(q) ||
       o.shippingName?.toLowerCase().includes(q)
     );
   });
@@ -205,8 +205,8 @@ export default function AdminOrdersPage() {
                 <tr key={order.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedOrder(order)}>
                   <td className="px-6 py-4 font-medium text-sm">{order.orderNumber}</td>
                   <td className="px-6 py-4">
-                    <div className="text-sm">{order.user.name || order.shippingName || "Guest"}</div>
-                    <div className="text-xs text-gray-500">{order.user.email}</div>
+                    <div className="text-sm">{order.user?.name || order.shippingName || "Guest"}</div>
+                    <div className="text-xs text-gray-500">{order.user?.email || order.shippingEmail}</div>
                   </td>
                   <td className="px-6 py-4 hidden lg:table-cell">
                     <div className="text-sm text-gray-600">{order.items.length} item{order.items.length !== 1 ? "s" : ""}</div>
@@ -244,7 +244,7 @@ export default function AdminOrdersPage() {
             <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={() => setSelectedOrder(order)}>
               <div>
                 <div className="text-sm font-semibold">{order.orderNumber}</div>
-                <div className="text-xs text-gray-500">{order.user.name || order.shippingName || "Guest"}</div>
+                <div className="text-xs text-gray-500">{order.user?.name || order.shippingName || "Guest"}</div>
                 <div className="text-xs text-gray-400 mt-0.5">{new Date(order.createdAt).toLocaleDateString("en-IN")}</div>
               </div>
               <div className="text-right">
@@ -354,9 +354,11 @@ export default function AdminOrdersPage() {
               <div>
                 <h3 className="text-sm font-semibold mb-3">Customer</h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                  <div className="text-sm">{selectedOrder.user.name || selectedOrder.shippingName}</div>
-                  <div className="text-sm text-gray-600">{selectedOrder.user.email}</div>
-                  {selectedOrder.user.phone && <div className="text-sm text-gray-600">{selectedOrder.user.phone}</div>}
+                  <div className="text-sm">{selectedOrder.user?.name || selectedOrder.shippingName}</div>
+                  <div className="text-sm text-gray-600">{selectedOrder.user?.email || selectedOrder.shippingEmail}</div>
+                  {(selectedOrder.user?.phone || selectedOrder.shippingPhone) && (
+                    <div className="text-sm text-gray-600">{selectedOrder.user?.phone || selectedOrder.shippingPhone}</div>
+                  )}
                 </div>
               </div>
 

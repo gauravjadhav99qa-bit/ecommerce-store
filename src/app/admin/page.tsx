@@ -17,8 +17,10 @@ interface DashboardData {
     orderNumber: string;
     status: string;
     total: number;
+    shippingName: string | null;
+    shippingEmail: string | null;
     createdAt: string;
-    user: { name: string | null; email: string; phone: string | null };
+    user: { name: string | null; email: string; phone: string | null } | null;
     items: { name: string; quantity: number; price: number }[];
   }[];
   topProducts: {
@@ -264,8 +266,8 @@ export default function AdminDashboard() {
                     </Link>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm">{order.user.name || "Guest"}</div>
-                    <div className="text-xs text-gray-500">{order.user.email}</div>
+                    <div className="text-sm">{order.user?.name || order.shippingName || "Guest"}</div>
+                    <div className="text-xs text-gray-500">{order.user?.email || order.shippingEmail}</div>
                   </td>
                   <td className="px-6 py-4 hidden md:table-cell">
                     {order.items.map((item, i) => (
