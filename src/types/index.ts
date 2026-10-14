@@ -10,6 +10,7 @@ export interface ProductWithCategory {
   stock: number;
   isActive: boolean;
   featured: boolean;
+  isDigital: boolean;
   categoryId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -34,7 +35,6 @@ export interface OrderWithItems {
   shippingName: string;
   shippingEmail: string;
   shippingPhone: string | null;
-  shippingAddr: Record<string, string>;
   paidAt: Date | null;
   createdAt: Date;
   user: {
@@ -58,7 +58,6 @@ export interface CartItem {
   price: number;
   image: string | null;
   quantity: number;
-  stock: number;
   variantId?: string;
   variantName?: string;
 }

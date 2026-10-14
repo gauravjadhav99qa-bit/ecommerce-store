@@ -8,6 +8,8 @@ export interface SessionUser {
   email: string | null;
   phone: string | null;
   role: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
 }
 
 async function getDerivedEncryptionKey(keyMaterial: string, salt: string) {
@@ -35,6 +37,8 @@ async function decryptToken(token: string): Promise<SessionUser | null> {
         email: (payload.email as string) || null,
         phone: (payload.phone as string) || null,
         role: payload.role as string,
+        emailVerified: Boolean(payload.emailVerified),
+        phoneVerified: Boolean(payload.phoneVerified),
       };
     }
     return null;
@@ -45,8 +49,13 @@ async function decryptToken(token: string): Promise<SessionUser | null> {
 
 export async function getSessionUser(req: NextRequest): Promise<SessionUser | null> {
   const token =
-    req.cookies.get("__Secure-next-auth.session-token")?.value ||
-    req.cookies.get("next-auth.session-token")?.value;
+    req.cookies.get("next-auth.session-token")?.value ||
+    req.cookies.get("__Secure-next-auth.session-token")?.value;
   if (!token) return null;
   return decryptToken(token);
+}
+
+/** Optional check for email/mobile verification. Not required for payment. */
+export function isPaymentVerified(user: SessionUser | null | undefined): boolean {
+  return Boolean(user?.emailVerified && user?.phoneVerified);
 }

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
-import { AlertTriangle, Mail, KeyRound, ArrowLeft } from "lucide-react";
+import { signIn } from "next-auth/react";
+import { AlertTriangle, LogIn } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -11,14 +12,12 @@ function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
 
   const isCheckoutRedirect = callbackUrl === "/checkout";
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -28,79 +27,27 @@ function LoginForm() {
       setLoading(false);
       return;
     }
-
-    try {
-      const checkRes = await fetch("/api/otp/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "login" }),
-      });
-      const data = await checkRes.json();
-
-      if (!checkRes.ok) {
-        setError(data.error || "Failed to send OTP");
-        setLoading(false);
-        return;
-      }
-
-      setStep("otp");
-    } catch {
-      setError("Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    if (otp.length !== 6) {
-      setError("Enter 6-digit OTP");
+    if (!password) {
+      setError("Enter your password");
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch("/api/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: email, code: otp }),
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl,
       });
-      const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error || "Invalid OTP");
+      if (result?.error) {
+        setError("Invalid email or password");
         setLoading(false);
         return;
       }
 
-      const userCheck = await fetch("/api/user/check-phone", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const userData = await userCheck.json();
-
-      if (userData.exists) {
-        const loginRes = await fetch("/api/auth/otp-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        const loginData = await loginRes.json();
-
-        if (!loginRes.ok) {
-          setError(loginData.error || "Login failed");
-          setLoading(false);
-          return;
-        }
-
-        window.location.href = callbackUrl;
-      } else {
-        window.location.href = `/register?email=${encodeURIComponent(email)}&callbackUrl=${encodeURIComponent(callbackUrl)}`;
-      }
+      window.location.href = callbackUrl;
     } catch {
       setError("Something went wrong");
     } finally {
@@ -123,13 +70,9 @@ function LoginForm() {
         </div>
       )}
 
-      <h1 className="text-xl sm:text-2xl font-bold text-center mb-2">
-        {step === "email" && "Sign In"}
-        {step === "otp" && "Enter OTP"}
-      </h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-center mb-2">Sign In</h1>
       <p className="text-center text-gray-500 text-xs sm:text-sm mb-6 sm:mb-8">
-        {step === "email" && "Enter your email to get started"}
-        {step === "otp" && `OTP sent to ${email}`}
+        Use the email and password set for your account
       </p>
 
       {error && (
@@ -138,86 +81,44 @@ function LoginForm() {
         </div>
       )}
 
-      {step === "email" && (
-        <form onSubmit={handleSendOtp} className="space-y-3 sm:space-y-4">
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="you@example.com"
-              autoComplete="email"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading || !email}
-            className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-[44px] text-sm sm:text-base font-medium flex items-center justify-center gap-2"
-          >
-            <Mail className="w-4 h-4" />
-            {loading ? "Sending OTP..." : "Send OTP"}
-          </button>
-        </form>
-      )}
-
-      {step === "otp" && (
-        <div className="space-y-4">
-          <form onSubmit={handleVerifyOtp} className="space-y-3 sm:space-y-4">
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                6-Digit OTP
-              </label>
-              <div className="flex justify-center">
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  required
-                  placeholder="000000"
-                  maxLength={6}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-center text-lg tracking-[0.5em] font-mono"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || otp.length !== 6}
-              className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-[44px] text-sm sm:text-base font-medium flex items-center justify-center gap-2"
-            >
-              <KeyRound className="w-4 h-4" />
-              {loading ? "Verifying..." : "Verify OTP"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setStep("email");
-                setOtp("");
-                setError("");
-              }}
-              className="w-full text-gray-500 py-2 text-sm font-medium flex items-center justify-center gap-1 hover:text-gray-700"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Change email
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSendOtp}
-              disabled={loading}
-              className="w-full text-blue-600 py-2 text-sm font-medium hover:underline"
-            >
-              Resend OTP
-            </button>
-          </form>
+      <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+        <div>
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+            Email Address
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            placeholder="you@example.com"
+            autoComplete="email"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
+          />
         </div>
-      )}
+        <div>
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+            Password
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            placeholder="••••••••"
+            autoComplete="current-password"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading || !email || !password}
+          className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-[44px] text-sm sm:text-base font-medium flex items-center justify-center gap-2"
+        >
+          <LogIn className="w-4 h-4" />
+          {loading ? "Signing in..." : "Sign In"}
+        </button>
+      </form>
 
       <p className="text-center text-xs sm:text-sm text-gray-500 mt-4 sm:mt-6">
         Don&apos;t have an account?{" "}
@@ -225,7 +126,7 @@ function LoginForm() {
           href={`/register${callbackUrl !== "/" ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`}
           className="text-blue-600 font-medium hover:underline"
         >
-          Sign up
+          Create account
         </Link>
       </p>
     </div>

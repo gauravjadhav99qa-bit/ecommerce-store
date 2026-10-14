@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const session = await getSessionUser(req);
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const categories = await prisma.category.findMany({
       include: { _count: { select: { products: true } } },
       orderBy: { name: "asc" },

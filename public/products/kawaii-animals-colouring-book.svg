@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FDE8D7"/>
+      <stop offset="100%" stop-color="#F6B26B"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" fill="url(#g)"/>
+  <rect x="16" y="16" width="368" height="468" fill="none" stroke="#E4633F" stroke-width="3" rx="18" opacity="0.55"/>
+  <rect x="100" y="36" width="200" height="210" rx="14" fill="#FFFFFF" stroke="#E4633F" stroke-width="2.5"/>
+  <g transform="translate(200 145) scale(0.22) translate(-400 -500)" stroke-linecap="round" stroke-linejoin="round"><circle cx="400" cy="420" r="200" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <path d="M 220 300 Q 200 180 260 220 Q 300 260 320 320 Z" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 580 300 Q 600 180 540 220 Q 500 260 480 320 Z" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="330" cy="390" r="30" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="470" cy="390" r="30" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="330" cy="390" r="12" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0"/>
+  <circle cx="470" cy="390" r="12" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0"/>
+  <path d="M 380 450 Q 400 470 420 450" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 400 470 L 400 500" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 400 500 Q 370 530 340 500" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 400 500 Q 430 530 460 500" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="280" y1="450" x2="180" y2="430" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="280" y1="470" x2="180" y2="470" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="280" y1="490" x2="180" y2="510" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="520" y1="450" x2="620" y2="430" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="520" y1="470" x2="620" y2="470" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="520" y1="490" x2="620" y2="510" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="400" cy="720" rx="170" ry="130" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <path d="M 250 700 Q 180 780 220 850" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 550 700 Q 620 780 580 850" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 340 840 Q 340 920 300 920 Q 260 920 260 840" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 460 840 Q 460 920 500 920 Q 540 920 540 840" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="400" y="970" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#1a1a1a">Colour me in!</text>
+</g>
+  <text x="200" y="327" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#2B2118">Kawaii Animals</text>
+  <text x="200" y="361" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#2B2118">Colouring Book</text>
+  <text x="200" y="418" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#5A4A3A">Animal Colouring Books</text>
+  <rect x="120" y="436" width="160" height="30" rx="15" fill="#E4633F"/>
+  <text x="200" y="456" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">INSTANT DOWNLOAD</text>
+  <text x="200" y="486" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#2B2118">GT Shopping</text>
+</svg>

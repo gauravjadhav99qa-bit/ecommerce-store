@@ -1,107 +1,125 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import LayoutShell from "@/components/LayoutShell";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import { getSiteSettings } from "@/lib/site-settings";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const nunitoSans = Nunito_Sans({
+  variable: "--font-nunito-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "GT SHOP - Quality Products at Honest Prices",
-    template: "%s | GT SHOP",
-  },
-  description: "Shop quality clothing, electronics, accessories, footwear and home products at GT SHOP. Great prices, secure checkout, free delivery above ₹499 and easy 7-day returns.",
-  keywords: ["online shopping", "GT SHOP", "buy online", "home products", "kitchen", "lifestyle", "clothing", "electronics"],
-  authors: [{ name: "GT SHOP" }],
-  creator: "GT SHOP",
-  metadataBase: new URL("https://gtshoppingonline.in"),
-  alternates: {
-    canonical: "https://gtshoppingonline.in",
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_IN",
-    url: "https://gtshoppingonline.in",
-    siteName: "GT SHOP",
-    title: "GT SHOP - Quality Products at Honest Prices",
-    description: "Quality products at honest prices. Free delivery on orders above ₹499.",
-    images: [
-      {
-        url: "/logo.png",
-        width: 1200,
-        height: 630,
-        alt: "GT SHOP",
-      },
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.gtshoppingonline.in";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const s = await getSiteSettings();
+  const name = s.siteName || "GT Shopping";
+  return {
+    title: {
+      default: `${name} — Printable Colouring Books & Activity PDFs`,
+      template: `%s | ${name}`,
+    },
+    description:
+      "Instant-download printable colouring books, kids' activity books, worksheets, planners and educational e-books. Print at home on A4 or US Letter. Secure checkout with Razorpay.",
+    keywords: [
+      "printable colouring books",
+      "colouring pages pdf",
+      "kids activity books",
+      "preschool worksheets",
+      "instant download",
+      "printable planners",
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "GT SHOP - Quality Products at Honest Prices",
-    description: "Quality products at honest prices. Free delivery on orders above ₹499.",
-    images: ["/logo.png"],
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.png", type: "image/png", sizes: "512x512" },
-    ],
-    apple: [
-      { url: "/favicon.png", sizes: "512x512" },
-    ],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    authors: [{ name }],
+    creator: name,
+    metadataBase: new URL(siteUrl),
+    alternates: {
+      canonical: siteUrl,
+    },
+    openGraph: {
+      type: "website",
+      locale: "en_IN",
+      url: siteUrl,
+      siteName: name,
+      title: `${name} — Printable Colouring Books & Activity PDFs`,
+      description:
+        "Instant-download printable colouring books, activity books, worksheets and planners. Print at home today.",
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${name} — Printable Colouring Books & Activity PDFs`,
+      description:
+        "Instant-download printable colouring books, activity books, worksheets and planners.",
+      images: ["/og-image.png"],
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/favicon.png", type: "image/png", sizes: "512x512" },
+      ],
+      apple: [{ url: "/favicon.png", sizes: "512x512" }],
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-};
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const s = await getSiteSettings();
+  const siteName = s.siteName || "GT Shopping";
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${nunitoSans.variable} h-full antialiased`}
     >
       <head>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/favicon.png" />
         <link rel="manifest" href="/site.webmanifest" />
-        <link rel="canonical" href="https://gtshoppingonline.in" />
-        <meta name="theme-color" content="#2563eb" />
+        <link rel="canonical" href={siteUrl} />
+        <meta name="theme-color" content="#c2517e" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              "name": "GT SHOP",
-              "alternateName": ["GT SHOP", "GT SHOPping Online", "GT Dhop Online"],
-              "url": "https://gtshoppingonline.in",
-              "potentialAction": {
+              name: siteName,
+              url: siteUrl,
+              potentialAction: {
                 "@type": "SearchAction",
-                "target": {
+                target: {
                   "@type": "EntryPoint",
-                  "urlTemplate": "https://gtshoppingonline.in/products?search={search_term_string}"
+                  urlTemplate: `${siteUrl}/products?search={search_term_string}`,
                 },
-                "query-input": "required name=search_term_string"
-              }
+                "query-input": "required name=search_term_string",
+              },
             }),
           }}
         />
@@ -111,16 +129,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
-              "@id": "https://gtshoppingonline.in/#organization",
-              "name": "GT SHOP",
-              "url": "https://gtshoppingonline.in",
-              "logo": {
+              "@id": `${siteUrl}/#organization`,
+              name: siteName,
+              url: siteUrl,
+              logo: {
                 "@type": "ImageObject",
-                "url": "https://gtshoppingonline.in/logo.png",
-                "width": 1200,
-                "height": 630
+                url: `${siteUrl}/logo.png`,
+                width: 1200,
+                height: 630,
               },
-              "description": "Curated products for modern living. Free delivery on orders above ₹499."
+              description:
+                "Printable colouring books, activity books, worksheets and planners — instant PDF downloads.",
             }),
           }}
         />

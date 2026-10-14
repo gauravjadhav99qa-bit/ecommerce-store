@@ -1,240 +1,111 @@
-# GT Shop — E-Commerce Store Project Guide
+# Inkberry Press — Digital Products Store Project Guide
 
 ## Quick Facts
-- **Project**: GT Shop — full-stack e-commerce website
-- **Stack**: Next.js 16.3.1, Prisma 7.9.1, PostgreSQL (Neon), Tailwind CSS v4, Zustand
-- **Production URL**: https://www.gtshoppingonline.in
+- **Project**: Inkberry Press — printable PDF e-commerce (colouring books, activity books, worksheets, planners, bundles)
+- **Stack**: Next.js 16.3.1, Prisma 7.9.1, PostgreSQL (Neon), Tailwind CSS v4, Zustand, Razorpay, Vercel Blob, Resend
+- **Production URL**: https://www.gtshoppingonline.in (set via `NEXT_PUBLIC_SITE_URL`)
 - **GitHub**: https://github.com/gauravjadhav007/ecommerce-store.git
 - **Vercel project**: `gauravjadhav561-8665s-projects/ecommerce-store`
 - **DNS**: GoDaddy
-- **Admin credentials**: `gaurav.jadhav561@gmail.com` / `Gaurav@007`
-- **Last commit**: `7d0eb91` — fix: never auto-logout, session persists 10 years
+- **Admin credentials**: see `.env` / reset via `npx tsx scripts/create-admin.ts` (never commit credentials)
 
 ## User Rules
 - **NEVER deploy without asking first**
 - **Always test before deploying**
 - **No secrets in SKILL.md** — all credentials referenced from `.env` file
 
+## What this store sells
+Digital-only. Every product is a PDF (or ZIP of PDFs) delivered instantly after Razorpay payment. There is **no physical shipping, inventory, tracking, returns-by-post, or COD**. Customers print at home. Bundles contain multiple products' files.
+
 ## Tech Details
-- **Database**: PostgreSQL on Neon (connection string in `DATABASE_URL` env var)
-- **Auth**: NextAuth v4 (JWT strategy, AES-256-GCM encrypted tokens via `next-auth/jwt` encode/decode)
-- **Email**: Resend API (key in `RESEND_API_KEY` env var), domain `gtshoppingonline.in` verified, sender `noreply@gtshoppingonline.in`
-- **Payments**: Razorpay live (keys in `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` env vars)
-- **SMS**: MSG91 — **demo mode**, SMS disabled (no GST/DLT). Phone OTP removed from codebase.
-- **Prisma output**: `../src/generated/prisma` (NOT default path)
+- **Database**: PostgreSQL on Neon (`DATABASE_URL`). Workflow: `npx prisma db push` (NOT migrate — no migrations folder). Client output: `src/generated/prisma`
+- **Auth**: NextAuth v4 (JWT strategy, AES-256-GCM encrypted tokens via `next-auth/jwt` encode/decode). Email OTP login only (no phone OTP)
+- **Payments**: Razorpay only. Server-computed amounts (paise). HMAC verify + webhook fallback
+- **File storage**: `src/lib/storage.ts` — Vercel Blob (private) in production; local filesystem `data/files/` fallback in dev when `BLOB_READ_WRITE_TOKEN` is unset
+- **Email**: Resend (`RESEND_API_KEY`), branded templates in `src/lib/email.ts`
+- **Receipt tokens**: `src/lib/receipt.ts` — HMAC-signed, 30-day TTL, guest download access
 - **OTP expiry**: 10 minutes
 
 ## Environment Variables (.env)
-All secrets are in `.env` — NEVER hardcode or commit these values.
-Required variables:
-- `DATABASE_URL` — PostgreSQL connection string
-- `NEXTAUTH_URL` — App base URL (http://localhost:3000 for dev, https://www.gtshoppingonline.in for prod)
-- `NEXTAUTH_SECRET` — Secret for NextAuth JWT signing
-- `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` — Razorpay credentials
-- `NEXT_PUBLIC_RAZORPAY_KEY_ID` — Razorpay client-side key
-- `RESEND_API_KEY` — Resend email API key
-- `MSG91_AUTH_KEY` — MSG91 SMS API key (not used — phone OTP removed)
+See `.env.example`. Required: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `RAZORPAY_WEBHOOK_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`. Optional in dev: `BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ID` (local FS fallback otherwise).
 
-## Database Models (Prisma)
+## Database Models (Prisma — digital additions)
 | Model | Key Fields | Notes |
 |-------|-----------|-------|
-| User | id, name, firstName, lastName, gender, dob, email (unique), phone (unique optional), password, image, role (CUSTOMER/ADMIN) | Phone is optional |
-| Product | id, name, slug (unique), description, price, compareAt, images (JSON string), sku, stock, isActive, featured, isDigital, downloadUrl, categoryId | |
-| Variant | id, name, price, stock, sku (unique), productId | Cascade delete with Product |
-| Category | id, name (unique), slug (unique), image | |
-| Order | id, orderNumber (unique), status (PENDING/PROCESSING/SHIPPED/DELIVERED/CANCELLED), total, shippingName, shippingEmail, shippingPhone, shippingAddr, paymentIntent, paidAt, userId | NO cascade delete on User |
+| Product | id, name, slug, price, compareAt, images (JSON), isActive, featured, isDigital (default true), productType (SINGLE/BUNDLE), tags, pageCount, paperSize, fileFormat, printInstructions, license, categoryId | stock exists but unused for digital (set 9999) |
+| ProductFile | id, productId, fileName, storagePath, mimeType, sizeBytes, sortOrder | Cascade delete with Product |
+| BundleItem | id, bundleId, productId, sortOrder | Unique [bundleId, productId] |
+| Order | id, orderNumber (IB-XXXXXX unique), status (PENDING/PAID/COMPLETED/FAILED/REFUNDED/CANCELLED), total, shippingName, shippingEmail, shippingPhone, shippingAddr (nullable, stores coupon JSON metadata), razorpayOrderId (unique), paidAt, userId | No cascade delete on User |
 | OrderItem | id, name, price, quantity, image, isDigital, downloaded, productId, orderId | Cascade delete with Order |
-| Review | id, rating, comment, userId, productId | Unique [userId, productId], cascade delete with both |
-| Coupon | id, code (unique), discountType, value, minOrder, maxUses, usedCount, expiresAt, isActive | |
-| Otp | id, phone, code, expires | Indexed on phone |
-| StoreSettings | id, key (unique), value | |
+| DownloadEvent | id, orderItemId, orderId, fileName, ip, createdAt | Logs every file stream |
+| NewsletterSubscriber | id, email (unique), source, consentAt | |
 
-## File Structure
+## Key Flows
 
-### Pages (src/app/)
+### Purchase → delivery
+1. Cart (Zustand, guest) → `/checkout` (guest-friendly; email required)
+2. `POST /api/orders` — creates PENDING order with server-priced items + optional coupon
+3. `POST /api/razorpay/order` — creates Razorpay order, stores `razorpayOrderId`
+4. Razorpay modal → success → `POST /api/razorpay/verify` — HMAC check, `markOrderPaid()` (idempotent), returns `receiptToken`
+5. `POST /api/razorpay/webhook` — server fallback (`payment.captured` / `payment.failed`)
+6. `/order-confirmed?orderNumber=..&t=<token>` — download links
+7. `GET /download/[orderNumber]?t=<token>` or session auth — file list page
+8. `GET /api/downloads/[orderNumber]/[itemId]` — streams file (Blob signed URL or local signed path)
+9. `src/lib/payments.ts markOrderPaid()` also sends the branded confirmation email with download CTA
+
+### Auth
+- Email OTP: `/api/otp/email` → `/api/otp/verify` → existing user: `/api/auth/otp-login`; new: `/register?email=...` → `/api/register` → auto-login
+- Admin: `/admin/login` → `/api/auth/admin-login` (bcrypt + ADMIN role)
+- Tokens: `next-auth/jwt` `encode()` (AES-256-GCM). Middleware decrypts via `jose.jwtDecrypt` + `@panva/hkdf` (Edge-compatible)
+- Session persists 10 years; full page reload (`window.location.href`) after login, never `router.push`
+
+### Route protection (middleware)
+- Admin (`/admin/*`): ADMIN role required
+- Guest-friendly: `/cart`, `/checkout`, `/products`, all public pages
+- Auth pages redirect logged-in users to `/`
+
+## File Structure (src/app/)
 ```
-Customer Pages:
-  page.tsx                          — Homepage
-  products/page.tsx                 — Product listing
-  products/[slug]/page.tsx          — Product detail
-  cart/page.tsx                     — Shopping cart (GUEST ACCESSIBLE, no login required)
-  checkout/page.tsx                 — Physical checkout (login required)
-  checkout/digital/page.tsx         — Digital checkout
-  order-confirmed/page.tsx          — Order success
-  login/page.tsx                    — Email OTP login (new vs existing user flow)
-  register/page.tsx                 — Email OTP signup (accepts ?email= param)
-  account/page.tsx                  — Account dashboard
-  account/orders/page.tsx           — Order history
-  account/orders/[orderNumber]/invoice/page.tsx — Invoice
-  account/address/page.tsx          — Address management
-  account/returns/page.tsx          — Returns
-  wishlist/page.tsx                 — Wishlist
-  track-order/page.tsx              — Order tracking
-  digital-products/page.tsx         — Digital products listing
-  digital-products/starter-kit/page.tsx — Starter kit page
-  download/[orderNumber]/page.tsx   — Digital download
-  privacy-policy, shipping-policy, return-policy, tc — Policy pages
-
-Admin Pages:
-  admin/login/page.tsx              — Admin login
-  admin/page.tsx                    — Admin dashboard
-  admin/orders/page.tsx             — Orders CRUD (edit shipping, delete)
-  admin/products/page.tsx           — Products CRUD
-  admin/inventory/page.tsx          — Inventory CRUD (edit modal, stock +/-)
-  admin/users/page.tsx              — Users list + delete (FK constraint handling)
-  admin/categories/page.tsx         — Categories CRUD
-  admin/coupons/page.tsx            — Coupons CRUD
-```
-
-### API Routes (src/app/api/)
-```
-Auth:
-  auth/[...nextauth]/route.ts       — NextAuth handler (GET/POST)
-  auth/otp-login/route.ts           — OTP login → next-auth/jwt encode() → encrypted JWT cookie
-  auth/admin-login/route.ts         — Admin login → next-auth/jwt encode() → encrypted JWT cookie
-
-OTP:
-  otp/email/route.ts                — Send OTP (email via Resend)
-  otp/verify/route.ts               — Verify OTP code (email only, phone removed)
-
-User:
-  register/route.ts                 — Register user (name, email, phone optional)
-  user/profile/route.ts             — User profile CRUD
-  user/check-phone/route.ts         — Check email existence
-
-Products:
-  products/route.ts                 — GET products list
-
-Orders:
-  orders/route.ts                   — GET/POST orders
-  orders/[orderNumber]/route.ts     — GET single order
-  orders/[orderNumber]/invoice/     — GET invoice PDF
-  orders/digital/route.ts           — Digital orders
-
-Admin:
-  admin/route.ts                    — Admin stats/dashboard
-  admin/orders/route.ts             — GET/PUT/DELETE orders
-  admin/products/route.ts           — GET/PUT/DELETE products
-  admin/inventory/route.ts          — GET/PUT/DELETE inventory
-  admin/users/route.ts              — GET/PUT/DELETE users
-  admin/categories/route.ts         — GET/POST/PUT/DELETE categories
-  admin/coupons/route.ts            — GET/POST/PUT/DELETE coupons
-
-Payments:
-  razorpay/order/route.ts           — Create Razorpay order
-  razorpay/verify/route.ts          — Verify payment
-
-Other:
-  coupons/validate/route.ts         — Validate coupon code
-  reviews/route.ts                  — GET/POST reviews
-  downloads/[orderNumber]/route.ts  — Digital downloads
+Customer: page.tsx, products/, cart/, checkout/, order-confirmed/,
+          download/[orderNumber]/, login/, register/,
+          account/ (page, orders, orders/[orderNumber]/invoice, downloads),
+          wishlist/, about/, faq/, contact/,
+          license/, refund-policy/, privacy-policy/, tc/
+Admin:    admin/ (page, login, products, orders, categories, coupons, users)
+API:      api/orders/, api/razorpay/{order,verify,webhook}/,
+          api/downloads/[orderNumber]/[itemId]/, api/files/local/,
+          api/admin/* (incl. products/[id]/files upload, newsletter),
+          api/newsletter/, api/categories/, api/coupons/validate/,
+          api/auth/*, api/otp/*, api/register, api/user/*, api/reviews/
 ```
 
 ### Lib (src/lib/)
 ```
-auth.ts              — NextAuth config (authOptions, CredentialsProvider, JWT callbacks). No custom jwt.decode — uses NextAuth default (jwtDecrypt)
-session.ts           — getSessionUser() — reads cookies, decrypts via jose.jwtDecrypt with HKDF key derivation (async)
-prisma.ts            — Prisma client singleton
-otp.ts               — createOtp(), generateOtp(), verifyOtp() — 10 min expiry
-email.ts             — sendEmail() via Resend, sendOtpEmail(to, code, purpose), sendOrderConfirmation()
-sms.ts               — MSG91 SMS (demo mode, not working)
-razorpay.ts          — Razorpay client
-coupons.ts           — Coupon validation logic
-utils.ts             — Utility functions
-whatsapp.ts          — WhatsApp integration
+storage.ts        — putProductFile, putCoverImage, issueProductDownload, readProductFile, signLocalPath, deleteProductFile
+download-auth.ts  — canAccessOrder (session or receipt token), getFilesForProduct (incl. bundle flattening)
+receipt.ts        — signReceipt / verifyReceipt (HMAC, 30-day TTL)
+payments.ts       — markOrderPaid (idempotent, sends email)
+email.ts          — sendEmail, sendOtpEmail, sendOrderConfirmation (Inkberry branded)
+razorpay.ts, coupons.ts, otp.ts, auth.ts, session.ts, prisma.ts, utils.ts
+demo-pdf.ts, demo-cover.ts — seed helpers
 ```
 
-### Components (src/components/)
-```
-Header.tsx           — Profile icon → /account (logged in) or /login (logged out); mobile menu with full account links
-Footer.tsx           — Site footer
-LayoutShell.tsx      — Layout wrapper
-Providers.tsx        — SessionProvider wrapper (client component, no session prop passed)
-ProductCard.tsx      — Product card (physical)
-FeaturedProductCard.tsx — Featured product card
-ProductGallery.tsx   — Image gallery
-ReviewSection.tsx    — Reviews display + form
-Logo.tsx             — Logo component
-GoogleAnalytics.tsx  — GA tracking
-```
-
-### Stores (src/stores/)
-```
-cart.ts              — Zustand cart store (guest cart, localStorage, no auth required)
-```
-
-## Auth Flow (CRITICAL)
-
-### How Auth Works
-1. **Login**: User enters email → POST `/api/otp/email` (sends OTP via Resend) → verify OTP at `/api/otp/verify` → check if email exists → if exists: POST `/api/auth/otp-login` → NextAuth `encode()` creates AES-256-GCM encrypted JWT cookie → `window.location.href` redirect; if new: redirect to `/register?email=...`
-2. **Register**: User enters email → OTP → verify → enter name + optional phone → POST `/api/register` (creates user) → auto-login via otp-login → `window.location.href` redirect
-3. **Admin Login**: Email + password → POST `/api/auth/admin-login` → validates bcrypt password + ADMIN role → NextAuth `encode()` creates encrypted JWT cookie
-4. **Middleware**: Reads session token cookie, decrypts via `jose.jwtDecrypt` with HKDF key derivation (matches NextAuth format), checks role for admin routes
-5. **Session**: NextAuth default `jwt.decode` decrypts the encrypted JWT token. Session endpoint returns full user data.
-
-### JWT Structure (NextAuth encrypted JWT)
-```js
-{
-  sub: user.id,        // Required for NextAuth JWT callback
-  id: user.id,
-  role: user.role,     // CUSTOMER or ADMIN
-  phone, firstName, lastName, gender, dob,
-  name: user.name,
-  email: user.email,
-  picture: user.image,
-}
-```
-Token format: AES-256-GCM encrypted via `next-auth/jwt` `encode()`. NOT signed JWT.
-
-### Cookie Names
-- `next-auth.session-token` (secure: false, for localhost)
-- `__Secure-next-auth.session-token` (secure: true, for production)
-
-### Session Token Decode (src/lib/session.ts)
-`getSessionUser(req)` reads cookie, decrypts via `jose.jwtDecrypt` with HKDF key derivation (`@panva/hkdf`). Uses `crypto.subtle` compatible HKDF for Edge Runtime. Returns full SessionUser with id, name, email, phone, role.
-
-### Session Persistence (IMPORTANT)
-- Session persists for 10 years — users NEVER auto-logout
-- Only explicit "Sign Out" button logs them out
-- After setting cookies via `/api/auth/otp-login` or `/api/auth/admin-login`, use `window.location.href` (full page reload) instead of `router.push()` + `router.refresh()`
-- `jwt` callback DB query is wrapped in try/catch so token fields survive DB failures
-
-### CRITICAL: Token format
-All auth tokens must use `next-auth/jwt` `encode()` (AES-256-GCM encrypted), NOT `jose.SignJWT` (HS256 signed). NextAuth's default decode uses `jwtDecrypt` which cannot decrypt signed tokens — session will always be empty if formats mismatch.
-
-## Route Protection (Middleware)
-```
-Protected routes (login required): /checkout
-Guest accessible: /cart, /products, /account, all public pages
-Admin routes (/admin/*): require ADMIN role token
-Auth routes (/login, /register): redirect to / if already logged in
-```
-
-## Key Architectural Decisions
-- **Cart is guest-accessible**: Uses Zustand + localStorage, no auth required. Login only needed at checkout.
-- **Header profile icon**: Direct link to `/account` page (no dropdown menu on desktop).
-- **Mobile hamburger menu**: Shows Account, My Orders, Addresses, Returns & Refunds, Wishlist, Sign Out for logged-in users. Shows Sign In / Register for logged-out users.
-- **OTP flow is email-only**: Phone/SMS OTP removed (MSG91 doesn't work without GST/DLT).
-- **Edge Runtime**: Middleware uses `jose.jwtDecrypt` with `@panva/hkdf` for token decryption (all Edge-compatible).
-
-## API Test Results
-- 26/26 tests passed (admin CRUD + customer auth + public APIs + security)
-- Playwright automated tests: all 15 customer pages load without redirects
-- Session persistence verified: login → reload → session intact
-- Admin delete user handles FK constraints (orders/reviews prevent deletion)
-- OTP expiry: 10 minutes
-- Email OTP via Resend works reliably
-
-## Build Commands
+## Commands
 ```bash
 npm run dev        # Local dev
 npm run build      # prisma generate && next build
-npm run start      # Production start
+npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint
+npm run db:seed    # Seed demo catalogue (22 singles + 3 bundles)
+npx prisma db push # Sync schema to Neon
+npx tsx scripts/create-admin.ts  # Create/reset admin user
+scripts/gen-brand-images.cjs     # Regenerate logo.png / og-image.png (needs Playwright)
 ```
 
-## Git
-- Branch: `main`
-- All code pushed to GitHub
-- Commit before pushing: run `npm run build` to verify
-- Last deploy: `7d0eb91` — fix: never auto-logout, session persists 10 years
+## Deployment Checklist (ask user before deploying)
+1. `npx prisma db push` against production DB
+2. Set `NEXT_PUBLIC_SITE_URL` to production domain
+3. Connect private Vercel Blob store (OIDC) or set `BLOB_READ_WRITE_TOKEN`
+4. Razorpay dashboard: webhook URL `https://<domain>/api/razorpay/webhook`, events `payment.captured` + `payment.failed`, secret = `RAZORPAY_WEBHOOK_SECRET`
+5. Verify `EMAIL_FROM` domain is verified in Resend
+6. `npm run build` locally to confirm, then ask user before `vercel deploy`

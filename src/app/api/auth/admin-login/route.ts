@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
         name: user.name,
         email: user.email,
         picture: user.image,
+        emailVerified: Boolean(user.emailVerified),
+        phoneVerified: Boolean(user.phoneVerified),
       },
       secret: process.env.NEXTAUTH_SECRET!,
       maxAge,
@@ -51,14 +53,6 @@ export async function POST(req: NextRequest) {
     response.cookies.set("next-auth.session-token", token, {
       httpOnly: true,
       secure: false,
-      sameSite: "lax",
-      path: "/",
-      maxAge,
-    });
-
-    response.cookies.set("__Secure-next-auth.session-token", token, {
-      httpOnly: true,
-      secure: true,
       sameSite: "lax",
       path: "/",
       maxAge,

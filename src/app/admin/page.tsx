@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DollarSign, Package, ShoppingCart, Users, AlertTriangle, TrendingUp, Clock, ArrowUpRight } from "lucide-react";
+import { DollarSign, ShoppingCart, Users, TrendingUp, Clock, ArrowUpRight, Mail } from "lucide-react";
 
 interface DashboardData {
   totalOrders: number;
@@ -21,7 +21,6 @@ interface DashboardData {
     user: { name: string | null; email: string; phone: string | null };
     items: { name: string; quantity: number; price: number }[];
   }[];
-  lowStockProducts: { id: string; name: string; stock: number; price: number }[];
   topProducts: {
     productId: string;
     _sum: { quantity: number; price: number };
@@ -31,15 +30,26 @@ interface DashboardData {
   revenueByDay: { date: string; revenue: number; orders: number }[];
 }
 
+interface Subscriber {
+  id: string;
+  email: string;
+  createdAt: string;
+}
+
 export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin")
-      .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("/api/admin").then((r) => r.json()),
+      fetch("/api/admin/newsletter").then((r) => r.json()).catch(() => []),
+    ]).then(([d, subs]) => {
+      setData(d);
+      setSubscribers(Array.isArray(subs) ? subs : subs?.subscribers || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -136,11 +146,12 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {data.ordersByStatus.map((s) => {
               const colors: Record<string, string> = {
-                PENDING: "bg-gray-400",
-                PROCESSING: "bg-blue-500",
-                SHIPPED: "bg-indigo-500",
-                DELIVERED: "bg-green-500",
-                CANCELLED: "bg-red-500",
+                PENDING: "bg-yellow-400",
+                PAID: "bg-blue-500",
+                COMPLETED: "bg-green-500",
+                FAILED: "bg-red-500",
+                REFUNDED: "bg-orange-400",
+                CANCELLED: "bg-gray-400",
               };
               const total = data.ordersByStatus.reduce((a, b) => a + b._count.id, 0);
               const pct = total > 0 ? Math.round((s._count.id / total) * 100) : 0;
@@ -195,35 +206,29 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Low Stock Alerts */}
+        {/* Newsletter Subscribers */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={16} className="text-orange-500" />
-              <h2 className="font-semibold">Low Stock</h2>
-              {data.lowStockProducts.length > 0 && (
-                <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-full">
-                  {data.lowStockProducts.length}
+              <Mail size={16} className="text-blue-500" />
+              <h2 className="font-semibold">Newsletter</h2>
+              {subscribers.length > 0 && (
+                <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                  {subscribers.length}
                 </span>
               )}
             </div>
-            <Link href="/admin/inventory" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-              Manage <ArrowUpRight size={14} />
-            </Link>
           </div>
           <div className="divide-y divide-gray-50">
-            {data.lowStockProducts.length === 0 && (
-              <div className="p-6 text-sm text-green-600 text-center">All products well stocked</div>
+            {subscribers.length === 0 && (
+              <div className="p-6 text-sm text-gray-400 text-center">No subscribers yet</div>
             )}
-            {data.lowStockProducts.map((p) => (
-              <div key={p.id} className="p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">{p.name}</div>
-                  <div className="text-xs text-gray-500">₹{(p.price / 100).toLocaleString("en-IN")}</div>
+            {subscribers.slice(0, 6).map((sub) => (
+              <div key={sub.id} className="p-4 flex items-center justify-between">
+                <div className="text-sm truncate">{sub.email}</div>
+                <div className="text-xs text-gray-400 flex-shrink-0 ml-3">
+                  {new Date(sub.createdAt).toLocaleDateString("en-IN")}
                 </div>
-                <span className={`text-sm font-semibold ${p.stock === 0 ? "text-red-600" : "text-orange-600"}`}>
-                  {p.stock === 0 ? "Out of stock" : `${p.stock} left`}
-                </span>
               </div>
             ))}
           </div>
@@ -287,10 +292,11 @@ export default function AdminDashboard() {
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     PENDING: "bg-yellow-100 text-yellow-700",
-    PROCESSING: "bg-blue-100 text-blue-700",
-    SHIPPED: "bg-indigo-100 text-indigo-700",
-    DELIVERED: "bg-green-100 text-green-700",
-    CANCELLED: "bg-red-100 text-red-700",
+    PAID: "bg-blue-100 text-blue-700",
+    COMPLETED: "bg-green-100 text-green-700",
+    FAILED: "bg-red-100 text-red-700",
+    REFUNDED: "bg-orange-100 text-orange-700",
+    CANCELLED: "bg-gray-100 text-gray-500",
   };
   return (
     <span className={`px-2 py-1 text-xs rounded-full font-medium ${styles[status] || "bg-gray-100 text-gray-600"}`}>

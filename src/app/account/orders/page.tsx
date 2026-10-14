@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, ChevronDown, ChevronUp, X, Clock, Truck, CheckCircle, Trash2, ChevronRight, MessageCircle } from "lucide-react";
+import { Package, ChevronDown, ChevronUp, X, Clock, CheckCircle, Trash2, ChevronRight, Download, CreditCard, RotateCcw } from "lucide-react";
 import { parseImages } from "@/lib/utils";
-import { getWhatsAppOrderLink } from "@/lib/whatsapp";
 import Link from "next/link";
 
 interface OrderItem {
@@ -21,34 +20,38 @@ interface Order {
   status: string;
   total: number;
   createdAt: string;
-  shippingPhone: string | null;
   items: OrderItem[];
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
   PENDING: {
-    bg: "bg-gray-100",
-    text: "text-gray-700",
+    bg: "bg-yellow-100",
+    text: "text-yellow-700",
     icon: <Clock size={14} />,
   },
-  PROCESSING: {
+  PAID: {
     bg: "bg-blue-100",
     text: "text-blue-700",
-    icon: <Package size={14} />,
+    icon: <CreditCard size={14} />,
   },
-  SHIPPED: {
-    bg: "bg-blue-100",
-    text: "text-blue-700",
-    icon: <Truck size={14} />,
-  },
-  DELIVERED: {
+  COMPLETED: {
     bg: "bg-green-100",
     text: "text-green-700",
     icon: <CheckCircle size={14} />,
   },
-  CANCELLED: {
+  FAILED: {
     bg: "bg-red-100",
     text: "text-red-700",
+    icon: <X size={14} />,
+  },
+  REFUNDED: {
+    bg: "bg-orange-100",
+    text: "text-orange-700",
+    icon: <RotateCcw size={14} />,
+  },
+  CANCELLED: {
+    bg: "bg-gray-100",
+    text: "text-gray-500",
     icon: <X size={14} />,
   },
 };
@@ -103,7 +106,7 @@ export default function OrdersPage() {
         </div>
         <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">No orders yet</h2>
         <p className="text-sm text-gray-500 text-center max-w-sm">
-          When you place an order, it will appear here. Start shopping to see your orders.
+          When you buy a colouring book or planner, your download links appear here instantly.
         </p>
       </div>
     );
@@ -124,7 +127,8 @@ export default function OrdersPage() {
         {orders.map((order) => {
           const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.PENDING;
           const isExpanded = expandedOrder === order.id;
-          const canCancel = order.status === "PENDING" || order.status === "PROCESSING";
+          const canCancel = order.status === "PENDING";
+          const canDownload = order.status === "PAID" || order.status === "COMPLETED";
 
           return (
             <div
@@ -197,10 +201,9 @@ export default function OrdersPage() {
                   </h3>
                   <div className="space-y-3">
                     {order.items.map((item) => {
-                      const images = parseImages(item.image || "[]");
                       const imageUrl = item.image
                         ? item.image.startsWith("[")
-                          ? JSON.parse(item.image)[0]
+                          ? parseImages(item.image)[0]
                           : item.image
                         : null;
 
@@ -227,7 +230,7 @@ export default function OrdersPage() {
                               {item.name}
                             </p>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              Qty: {item.quantity}
+                              Digital download
                             </p>
                             <p className="text-sm font-semibold text-gray-900 mt-1">
                               ₹{((item.price * item.quantity) / 100).toFixed(0)}
@@ -238,8 +241,17 @@ export default function OrdersPage() {
                     })}
                   </div>
 
-                  {canCancel && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+                    {canDownload && (
+                      <Link
+                        href={`/download/${order.orderNumber}`}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
+                      >
+                        <Download size={14} />
+                        My Downloads
+                      </Link>
+                    )}
+                    {canCancel && (
                       <button
                         onClick={() => cancelOrder(order.orderNumber)}
                         disabled={cancellingOrder === order.orderNumber}
@@ -257,19 +269,8 @@ export default function OrdersPage() {
                           </>
                         )}
                       </button>
-                      {order.shippingPhone && (
-                        <a
-                          href={getWhatsAppOrderLink(order.shippingPhone, order.orderNumber, order.total)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
-                        >
-                          <MessageCircle size={14} />
-                          Track on WhatsApp
-                        </a>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </div>

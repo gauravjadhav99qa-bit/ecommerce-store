@@ -68,22 +68,13 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    if (order.status !== "PENDING" && order.status !== "PROCESSING") {
+    if (order.status !== "PENDING") {
       return NextResponse.json({ error: "Order cannot be cancelled at this stage" }, { status: 400 });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { orderNumber },
-        data: { status: "CANCELLED" },
-      });
-
-      for (const item of order.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
-        });
-      }
+    await prisma.order.update({
+      where: { orderNumber },
+      data: { status: "CANCELLED" },
     });
 
     return NextResponse.json({ success: true });

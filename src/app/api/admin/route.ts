@@ -23,14 +23,13 @@ export async function GET(req: NextRequest) {
       todayOrders,
       todayRevenue,
       pendingOrders,
-      lowStockProducts,
       topProducts,
       ordersByStatus,
       revenueByDay,
     ] = await Promise.all([
       prisma.order.count(),
       prisma.order.aggregate({ _sum: { total: true }, where: { status: { not: "CANCELLED" } } }),
-      prisma.product.count(),
+      prisma.product.count({ where: { isActive: true } }),
       prisma.user.count(),
       prisma.order.findMany({
         take: 10,
@@ -43,12 +42,6 @@ export async function GET(req: NextRequest) {
         where: { createdAt: { gte: todayStart }, status: { not: "CANCELLED" } },
       }),
       prisma.order.count({ where: { status: "PENDING" } }),
-      prisma.product.findMany({
-        where: { stock: { lte: 5 }, isActive: true },
-        select: { id: true, name: true, sku: true, price: true, stock: true, images: true },
-        orderBy: { stock: "asc" },
-        take: 10,
-      }),
       prisma.orderItem.groupBy({
         by: ["productId"],
         _sum: { quantity: true, price: true },
@@ -101,7 +94,6 @@ export async function GET(req: NextRequest) {
       todayOrders,
       todayRevenue: todayRevenue._sum.total || 0,
       pendingOrders,
-      lowStockProducts,
       topProducts: topProductsWithNames,
       ordersByStatus,
       revenueByDay,

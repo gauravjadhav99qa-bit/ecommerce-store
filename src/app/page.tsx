@@ -1,84 +1,154 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { parseImages } from "@/lib/utils";
-import FeaturedProductCard from "@/components/FeaturedProductCard";
-import { Check, Zap, ArrowRight, Share2, Copy, Star } from "lucide-react";
+import ProductCard from "@/components/ProductCard";
+import {
+  Download,
+  Printer,
+  ShieldCheck,
+  FileText,
+  Sparkles,
+  ArrowRight,
+  Star,
+  Heart,
+  Mail,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const reviews = [
-  { name: "Priya Sharma", location: "Mumbai", rating: 5, text: "The fabric quality is incredible! Super soft and comfortable. My absolute favorite t-shirt now.", verified: true, product: "Cotton Round Neck T-Shirt" },
-  { name: "Rahul Verma", location: "Delhi", rating: 4, text: "Great sound quality and the noise cancellation really works. Battery lasts all day. Worth every rupee.", verified: true, product: "Wireless Bluetooth Headphones" },
-  { name: "Anjali Patel", location: "Bangalore", rating: 5, text: "Love the slim fit! Ordered 2 more in different colors. The stretch comfort is amazing. My whole family loves them!", verified: true, product: "Slim Fit Denim Jeans" },
-  { name: "Sneha Gupta", location: "Pune", rating: 5, text: "Best online shopping I've ever had. The watch looks premium and the health tracking features are accurate. Delivery was super fast!", verified: false, product: "Smart Watch Pro" },
-  { name: "Arjun Mehta", location: "Hyderabad", rating: 5, text: "Bought this bag for my wife. She absolutely loved it! The leather quality is genuine and the craftsmanship is excellent.", verified: true, product: "Leather Crossbody Bag" },
-  { name: "Kavita Reddy", location: "Chennai", rating: 4, text: "Good quality cookware. The non-stick coating works well and it's easy to clean. PFOA free is a big plus.", verified: true, product: "Non-Stick Cookware Set" },
-  { name: "Rohan Singh", location: "Jaipur", rating: 4, text: "Delivery took a bit longer than expected, but the speaker sound quality is fantastic. Great bass for its size.", verified: false, product: "Portable Bluetooth Speaker" },
-  { name: "Meera Iyer", location: "Kochi", rating: 5, text: "Perfect for daily runs! Lightweight, great cushioning, and the breathable mesh keeps my feet cool. Highly recommend!", verified: true, product: "Running Sneakers" },
+const CATEGORY_EMOJI: Record<string, string> = {
+  "animal-colouring": "🐾",
+  "mandala-colouring": "🌸",
+  "kids-colouring": "🎨",
+  "dinosaur-fantasy": "🦄",
+  "alphabet-numbers": "🔤",
+  "preschool-activity": "🧸",
+  "puzzles-mazes": "🧩",
+  "educational-ebooks": "📖",
+  "planners-journals": "🗓️",
+  bundles: "🎁",
+};
+
+const FAQS = [
+  {
+    q: "How do I receive my files after paying?",
+    a: "Instantly. As soon as your payment is confirmed you get a download link on the order confirmation page, plus an email with the same links. You can also find every purchase anytime under My Downloads in your account.",
+  },
+  {
+    q: "What paper size do the printables use?",
+    a: "Most books are provided for both A4 and US Letter. The exact paper size for each product is listed on its page. Print at 100% scale ('Actual size') for best results.",
+  },
+  {
+    q: "Can I print the pages more than once?",
+    a: "Yes. Your purchase includes unlimited personal printing — print a page again if it gets scribbled on, or print a whole book for your classroom (personal/classroom use). The digital files themselves cannot be shared or resold.",
+  },
+  {
+    q: "What file format will I receive?",
+    a: "PDF files that open on any phone, tablet or computer with a free PDF reader. No special software needed.",
+  },
+  {
+    q: "Do you offer refunds?",
+    a: "Because downloads are delivered instantly, we generally can't offer refunds once files are accessed. If you have any problem with your order, contact us — we'll make it right.",
+  },
 ];
 
 export default async function HomePage() {
-  const featuredProducts = await prisma.product.findMany({
-    where: { isActive: true, featured: true },
+  const featured = await prisma.product.findMany({
+    where: { isActive: true, isDigital: true, featured: true },
     take: 8,
+    orderBy: { price: "asc" },
+  });
+
+  const newArrivals = await prisma.product.findMany({
+    where: { isActive: true, isDigital: true, productType: "SINGLE" },
+    take: 4,
     orderBy: { createdAt: "desc" },
-    include: { category: true, variants: true },
+  });
+
+  const bundles = await prisma.product.findMany({
+    where: { isActive: true, isDigital: true, productType: "BUNDLE" },
+    take: 4,
+    orderBy: { compareAt: "desc" },
+  });
+
+  const kidsProducts = await prisma.product.findMany({
+    where: {
+      isActive: true,
+      isDigital: true,
+      category: { slug: { in: ["kids-colouring", "preschool-activity", "alphabet-numbers"] } },
+    },
+    take: 4,
+    orderBy: { featured: "desc" },
   });
 
   const categories = await prisma.category.findMany({
+    where: { products: { some: { isActive: true, isDigital: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  const reviews = await prisma.review.findMany({
+    where: { product: { isActive: true, isDigital: true } },
     take: 6,
-    include: { products: { where: { isActive: true }, take: 1 } },
+    orderBy: { createdAt: "desc" },
+    include: { user: { select: { name: true, firstName: true } } },
   });
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero - Product-focused like reference */}
-      <section className="relative bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">
-                New Collection 2026
+    <div className="min-h-screen bg-cream">
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-cream via-cream to-[#F3E4D7]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 md:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="animate-fade-up">
+              <span className="inline-flex items-center gap-1.5 bg-berry/10 text-berry text-xs font-bold px-3 py-1.5 rounded-full mb-5">
+                <Sparkles size={13} /> Printable PDFs · Instant download
               </span>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-4 leading-tight">
-                Premium Quality
-                <span className="block text-blue-600">For Modern Living</span>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-ink mb-5 leading-[1.08]">
+                Colour, learn and
+                <span className="block text-berry">play — at home</span>
               </h1>
-              <p className="text-gray-600 text-base sm:text-lg mb-8 max-w-lg leading-relaxed">
-                Curated products for modern living. Quality you can trust, prices you will love. No shortcuts. No compromises.
+              <p className="text-ink-soft text-base sm:text-lg mb-8 max-w-lg leading-relaxed">
+                Printable colouring books, kids&apos; activity books, worksheets
+                and planners. Pay once, download instantly, print as many times
+                as you like.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
-                  href="#products"
-                  className="inline-block bg-blue-600 text-white px-8 py-3.5 font-semibold hover:bg-blue-700 transition-colors text-sm tracking-wide"
+                  href="/products"
+                  className="inline-flex items-center gap-2 bg-berry text-white px-8 py-3.5 font-semibold hover:bg-berry-dark transition-colors rounded-full text-sm shadow-lg shadow-berry/20"
                 >
-                  Shop Now
+                  Shop printables <ArrowRight size={16} />
                 </Link>
                 <Link
-                  href="#story"
-                  className="inline-block border border-gray-300 text-gray-700 px-8 py-3.5 font-semibold hover:bg-gray-50 transition-colors text-sm tracking-wide"
+                  href="/products?category=bundles"
+                  className="inline-flex items-center gap-2 border-2 border-ink/15 text-ink px-8 py-3.5 font-semibold hover:border-berry hover:text-berry transition-colors rounded-full text-sm"
                 >
-                  Our Story
+                  Bundle deals
                 </Link>
               </div>
             </div>
             <div className="hidden lg:flex justify-center">
-              <div className="relative">
-                <div className="w-80 h-80 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
-                  <div className="w-60 h-60 bg-gradient-to-br from-blue-200 to-blue-300 rounded-full flex items-center justify-center">
-                    <Zap className="w-24 h-24 text-blue-600" />
-                  </div>
-                </div>
-                <div className="absolute -bottom-4 -right-4 bg-white rounded-xl shadow-lg p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <Check className="w-5 h-5 text-green-600" />
+              <div className="relative w-[420px] h-[380px]">
+                {featured.slice(0, 3).map((p, i) => {
+                  const img = parseImages(p.images)[0];
+                  const rotations = ["-rotate-6", "rotate-3", "rotate-12"];
+                  const offsets = ["left-0 top-8", "left-28 top-0", "left-56 top-12"];
+                  return (
+                    <div
+                      key={p.id}
+                      className={`absolute ${offsets[i]} w-44 rounded-2xl overflow-hidden shadow-2xl border-4 border-white ${rotations[i]}`}
+                    >
+                      {img ? (
+                        <img src={img} alt={p.name} className="w-full h-auto" />
+                      ) : null}
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">10,000+</p>
-                      <p className="text-xs text-gray-500">Happy Customers</p>
-                    </div>
-                  </div>
+                  );
+                })}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-lg px-5 py-2.5 flex items-center gap-2">
+                  <Download size={16} className="text-berry" />
+                  <span className="text-sm font-bold text-ink">
+                    Ready in seconds
+                  </span>
                 </div>
               </div>
             </div>
@@ -86,302 +156,351 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Trust Badges - Like reference */}
-      <section className="border-b border-gray-100 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-gray-100">
+      {/* Trust strip */}
+      <section className="border-y border-cream-dark bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-cream-dark">
             {[
-              { emoji: "🛡️", label: "Secure Checkout", sub: "SSL Encrypted" },
-              { emoji: "✅", label: "Quality Checked", sub: "Before Dispatch" },
-              { emoji: "🚚", label: "Free Delivery", sub: "Orders ₹499+" },
-              { emoji: "⭐", label: "Customer Rated", sub: "Real Reviews" },
-              { emoji: "🔄", label: "Easy Returns", sub: "7-Day Policy" },
+              { icon: Download, label: "Instant download", sub: "Right after payment" },
+              { icon: Printer, label: "Print at home", sub: "A4 & US Letter" },
+              { icon: FileText, label: "PDF format", sub: "Works on any device" },
+              { icon: ShieldCheck, label: "Secure checkout", sub: "Razorpay payments" },
             ].map((badge) => (
-              <div key={badge.label} className="py-5 md:py-6 text-center">
-                <span className="text-2xl block mb-1.5">{badge.emoji}</span>
-                <p className="text-xs font-semibold text-gray-900">{badge.label}</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">{badge.sub}</p>
+              <div key={badge.label} className="py-5 md:py-6 text-center px-2">
+                <badge.icon
+                  size={22}
+                  className="mx-auto mb-1.5 text-berry"
+                  aria-hidden
+                />
+                <p className="text-xs font-bold text-ink">{badge.label}</p>
+                <p className="text-[11px] text-ink-soft/70 mt-0.5">{badge.sub}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Category Circles - Like reference */}
-      <section className="py-12 sm:py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex overflow-x-auto gap-6 pb-4 scrollbar-hide">
-            {categories.map((cat) => (
+      {/* Categories */}
+      <section className="py-14 sm:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <span className="text-berry text-xs font-bold tracking-[0.2em] uppercase mb-2 block">
+                Browse by category
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+                Find the perfect printable
+              </h2>
+            </div>
+            <Link
+              href="/products"
+              className="text-sm font-semibold text-berry hover:text-berry-dark hidden sm:block"
+            >
+              View all →
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
+            {categories.slice(0, 10).map((cat) => (
               <Link
                 key={cat.id}
                 href={`/products?category=${cat.slug}`}
-                className="flex-shrink-0 group"
+                className="group bg-white rounded-2xl border border-cream-dark p-4 text-center hover:border-berry/40 hover:shadow-md transition-all"
               >
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center border-2 border-transparent group-hover:border-blue-500 transition-all">
-                  <div className="text-center">
-                    <Zap className="w-8 h-8 text-blue-600 mx-auto mb-1" />
-                    <span className="text-xs font-medium text-gray-700 line-clamp-1">{cat.name}</span>
-                  </div>
-                </div>
+                <span className="text-3xl block mb-2">
+                  {CATEGORY_EMOJI[cat.slug] || "📄"}
+                </span>
+                <span className="text-xs font-semibold text-ink leading-tight block line-clamp-2 group-hover:text-berry transition-colors">
+                  {cat.name}
+                </span>
               </Link>
             ))}
-            <Link
-              href="/products"
-              className="flex-shrink-0 group"
-            >
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gray-100 flex items-center justify-center border-2 border-transparent group-hover:border-blue-500 transition-all">
-                <div className="text-center">
-                  <ArrowRight className="w-8 h-8 text-gray-400 mx-auto mb-1" />
-                  <span className="text-xs font-medium text-gray-700">All Products</span>
-                </div>
-              </div>
-            </Link>
           </div>
         </div>
       </section>
 
-      {/* Marquee Promotional Banners - Like reference */}
-      <section className="py-4 bg-gray-50 overflow-hidden">
+      {/* Offers marquee */}
+      <section className="py-3 bg-marigold/15 overflow-hidden border-y border-marigold/25">
         <div className="flex animate-scroll-left gap-4 w-max">
-          {[
-            { text: "Launch Offer: Flat 20% off on all products", icon: "🎉" },
-            { text: "Combo Deal: Buy any 3 items, save ₹50", icon: "🎁" },
-            { text: "Free Delivery on orders above ₹499", icon: "🚚" },
-            { text: "New Arrivals: Check out our latest collection", icon: "✨" },
-            { text: "Premium Quality: 100% genuine products", icon: "⭐" },
-            { text: "Easy Returns: 7-day hassle-free policy", icon: "🔄" },
-          ].map((promo, i) => (
-            <div
-              key={i}
-              className="flex-shrink-0 bg-white border border-gray-200 rounded-lg px-5 py-2.5 flex items-center gap-2"
-            >
-              <span>{promo.icon}</span>
-              <span className="text-sm font-medium text-gray-700">{promo.text}</span>
-            </div>
-          ))}
-          {/* Duplicate for seamless scroll */}
-          {[
-            { text: "Launch Offer: Flat 20% off on all products", icon: "🎉" },
-            { text: "Combo Deal: Buy any 3 items, save ₹50", icon: "🎁" },
-            { text: "Free Delivery on orders above ₹499", icon: "🚚" },
-            { text: "New Arrivals: Check out our latest collection", icon: "✨" },
-            { text: "Premium Quality: 100% genuine products", icon: "⭐" },
-            { text: "Easy Returns: 7-day hassle-free policy", icon: "🔄" },
-          ].map((promo, i) => (
-            <div
-              key={`dup-${i}`}
-              className="flex-shrink-0 bg-white border border-gray-200 rounded-lg px-5 py-2.5 flex items-center gap-2"
-            >
-              <span>{promo.icon}</span>
-              <span className="text-sm font-medium text-gray-700">{promo.text}</span>
-            </div>
-          ))}
+          {[...Array(2)].map((_, dup) =>
+            [
+              { text: "Bundle deals save up to 35%", icon: "🎁" },
+              { text: "Instant PDF download after payment", icon: "⚡" },
+              { text: "Print unlimited copies at home", icon: "🖨️" },
+              { text: "New colouring books added every month", icon: "✨" },
+              { text: "Works with A4 and US Letter paper", icon: "📄" },
+            ].map((promo, i) => (
+              <div
+                key={`${dup}-${i}`}
+                className="flex-shrink-0 bg-white border border-marigold/30 rounded-full px-5 py-2 flex items-center gap-2"
+              >
+                <span>{promo.icon}</span>
+                <span className="text-sm font-medium text-ink">{promo.text}</span>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
-      {/* Featured Products - Bestseller style like reference */}
-      {featuredProducts.length > 0 && (
-        <section id="products" className="py-14 sm:py-20 md:py-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-10">
+      {/* Bestsellers */}
+      {featured.length > 0 && (
+        <section className="py-14 sm:py-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-end justify-between mb-8">
               <div>
-                <span className="text-blue-600 text-xs font-semibold tracking-[0.2em] uppercase mb-2 block">
+                <span className="text-berry text-xs font-bold tracking-[0.2em] uppercase mb-2 block">
                   Bestsellers
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  Featured Products
+                <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+                  Loved by parents &amp; teachers
                 </h2>
               </div>
               <Link
-                href="/products"
-                className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors hidden sm:block"
+                href="/products?featured=1"
+                className="text-sm font-semibold text-berry hover:text-berry-dark hidden sm:block"
               >
-                View All →
+                View all →
               </Link>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product) => (
-                <FeaturedProductCard key={product.id} product={product} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {featured.map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
-            </div>
-
-            <div className="text-center mt-10 sm:hidden">
-              <Link
-                href="/products"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                View All Products <ArrowRight className="w-4 h-4" />
-              </Link>
             </div>
           </div>
         </section>
       )}
 
-      {/* Why Choose Us - Like reference "Why Makhana?" */}
-      <section className="py-14 sm:py-20 md:py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Why Choose Us?
-            </h2>
-            <p className="text-gray-500 mt-3 text-sm sm:text-base">
-              The store that checks every box
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { emoji: "💪", title: "Quality Products", desc: "Carefully sourced from trusted suppliers" },
-              { emoji: "🚚", title: "Free Delivery", desc: "Free shipping on orders above ₹499" },
-              { emoji: "🔄", title: "Easy Returns", desc: "7-day hassle-free return policy" },
-              { emoji: "⭐", title: "Trusted by Customers", desc: "Rated highly by our buyers" },
-            ].map((item) => (
-              <div key={item.title} className="text-center bg-white rounded-xl p-6 border border-gray-100 hover:shadow-md transition-shadow">
-                <span className="text-3xl block mb-3">{item.emoji}</span>
-                <h3 className="font-bold text-gray-900 text-sm mb-1">{item.title}</h3>
-                <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
+      {/* Kids section */}
+      {kidsProducts.length > 0 && (
+        <section className="py-14 sm:py-20 bg-white border-y border-cream-dark">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <span className="text-sage text-xs font-bold tracking-[0.2em] uppercase mb-2 block">
+                  For little learners
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+                  Kids&apos; activity &amp; worksheets
+                </h2>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Our Story - Like reference */}
-      <section id="story" className="py-14 sm:py-20 md:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <span className="text-blue-600 text-xs font-semibold tracking-[0.2em] uppercase mb-3 block">
-                Our Story
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-                From Our Store, With Love
-              </h2>
-              <p className="text-gray-600 text-base leading-relaxed mb-4">
-                What started as a simple love for quality products has grown into a mission: to bring you the finest, hand-picked items at honest prices.
-              </p>
-              <p className="text-gray-600 text-base leading-relaxed mb-4">
-                Every item in our collection is carefully curated, tested, and priced fairly. We source from trusted suppliers to bring you the best deals.
-              </p>
-              <p className="text-gray-600 text-base leading-relaxed mb-6">
-                No shortcuts. No compromises. Just honest, quality shopping.
-              </p>
-              <p className="text-sm font-semibold text-gray-900 mb-6">
-                Team GT SHOP
-              </p>
               <Link
-                href="/products"
-                className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                href="/products?category=preschool-activity"
+                className="text-sm font-semibold text-berry hover:text-berry-dark hidden sm:block"
               >
-                Read our full story →
+                View all →
               </Link>
             </div>
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl overflow-hidden">
-              <div className="aspect-video flex items-center justify-center">
-                <div className="text-center p-8">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <p className="text-gray-500 text-sm">Our Story Image</p>
-                </div>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+              {kidsProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Testimonials - Like reference with verified badges */}
-      <section className="py-14 sm:py-20 md:py-24 bg-gray-50 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10">
-          <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              What Our Customers Say
-            </h2>
-            <p className="text-gray-500 mt-3 text-sm">
-              Based on 8 verified reviews
-            </p>
-          </div>
-        </div>
-        <div className="relative">
-          <div className="flex animate-scroll-left gap-5 w-max">
-            {[...reviews, ...reviews].map((review, i) => (
-              <div
-                key={i}
-                className="flex-shrink-0 w-80 bg-white rounded-xl p-5 border border-gray-100"
+      {/* New arrivals */}
+      {newArrivals.length > 0 && (
+        <section className="py-14 sm:py-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <span className="text-berry text-xs font-bold tracking-[0.2em] uppercase mb-2 block">
+                  Fresh off the press
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+                  New arrivals
+                </h2>
+              </div>
+              <Link
+                href="/products?sort=newest"
+                className="text-sm font-semibold text-berry hover:text-berry-dark hidden sm:block"
               >
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: review.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                  {Array.from({ length: 5 - review.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 text-gray-200" />
-                  ))}
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                  &ldquo;{review.text}&rdquo;
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+              {newArrivals.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Bundles */}
+      {bundles.length > 0 && (
+        <section className="py-14 sm:py-20 bg-gradient-to-br from-berry/5 via-cream to-marigold/10 border-y border-cream-dark">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <span className="text-berry text-xs font-bold tracking-[0.2em] uppercase mb-2 block">
+                  Save more with bundles
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+                  Bundles &amp; collections
+                </h2>
+              </div>
+              <Link
+                href="/products?category=bundles"
+                className="text-sm font-semibold text-berry hover:text-berry-dark hidden sm:block"
+              >
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
+              {bundles.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Benefits */}
+      <section className="py-14 sm:py-20 bg-white border-y border-cream-dark">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+              Why print with GT Shopping?
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Download,
+                title: "No waiting for delivery",
+                desc: "Your PDF is available the second payment completes — start printing in under a minute.",
+              },
+              {
+                icon: Printer,
+                title: "Print as often as you like",
+                desc: "Made a mistake? Print the page again. Every purchase includes unlimited personal printing.",
+              },
+              {
+                icon: Heart,
+                title: "Made for real family life",
+                desc: "Thick outlines for small hands, calming mandalas for grown-ups, and homework-ready worksheets.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="bg-cream rounded-2xl p-6 border border-cream-dark"
+              >
+                <item.icon size={24} className="text-berry mb-3" aria-hidden />
+                <h3 className="font-bold text-ink mb-1.5 font-display">
+                  {item.title}
+                </h3>
+                <p className="text-ink-soft text-sm leading-relaxed">
+                  {item.desc}
                 </p>
-                <div className="text-xs text-gray-400 mb-3">
-                  for <span className="font-medium text-gray-600">{review.product}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                    {review.name[0]}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-gray-900">{review.name}</p>
-                      {review.verified && (
-                        <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
-                          Verified
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400">{review.location}</p>
-                  </div>
-                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Share & Get Discount - Like reference */}
-      <section className="py-14 sm:py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-            Love GT SHOP?
-          </h2>
-          <p className="text-gray-500 mb-6">
-            Share with friends & they get 20% off!
-          </p>
-          <div className="flex justify-center gap-4">
-            <button className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors text-sm">
-              <Share2 className="w-4 h-4" />
-              WhatsApp
-            </button>
-            <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors text-sm">
-              <Copy className="w-4 h-4" />
-              Copy Link
-            </button>
+      {/* Reviews (genuine only) */}
+      {reviews.length > 0 && (
+        <section className="py-14 sm:py-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+                What customers say
+              </h2>
+              <p className="text-ink-soft mt-2 text-sm">
+                Reviews from verified purchases
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {reviews.map((review) => (
+                <div
+                  key={review.id}
+                  className="bg-white rounded-2xl p-5 border border-cream-dark"
+                >
+                  <div className="flex gap-0.5 mb-3" aria-label={`${review.rating} out of 5 stars`}>
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <Star
+                        key={j}
+                        size={15}
+                        className={
+                          j < review.rating
+                            ? "fill-marigold text-marigold"
+                            : "text-cream-dark"
+                        }
+                      />
+                    ))}
+                  </div>
+                  <p className="text-ink-soft text-sm leading-relaxed mb-3">
+                    &ldquo;{review.comment}&rdquo;
+                  </p>
+                  <p className="text-xs font-semibold text-ink">
+                    {review.user?.firstName || review.user?.name || "Customer"}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
+        </section>
+      )}
+
+      {/* FAQ */}
+      <section className="py-14 sm:py-20 bg-white border-t border-cream-dark">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-ink">
+              Frequently asked questions
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {FAQS.map((faq) => (
+              <details
+                key={faq.q}
+                className="group bg-cream rounded-xl border border-cream-dark overflow-hidden"
+              >
+                <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-ink flex items-center justify-between">
+                  {faq.q}
+                  <span className="text-berry group-open:rotate-45 transition-transform">
+                    +
+                  </span>
+                </summary>
+                <p className="px-5 pb-4 text-sm text-ink-soft leading-relaxed">
+                  {faq.a}
+                </p>
+              </details>
+            ))}
+          </div>
+          <p className="text-center mt-8 text-sm text-ink-soft">
+            More questions?{" "}
+            <Link href="/contact" className="text-berry font-semibold hover:underline">
+              Contact us
+            </Link>{" "}
+            or see our{" "}
+            <Link href="/faq" className="text-berry font-semibold hover:underline">
+              full FAQ
+            </Link>
+            .
+          </p>
         </div>
       </section>
 
-      {/* Coupon Banner - Like reference */}
-      <section className="py-14 sm:py-20 bg-gradient-to-r from-blue-600 to-indigo-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-            Flat 20% OFF on Your First Order
+      {/* Newsletter band */}
+      <section className="py-12 sm:py-16 bg-ink">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <Mail size={28} className="mx-auto text-marigold mb-3" aria-hidden />
+          <h2 className="text-2xl sm:text-3xl font-bold text-cream mb-2 font-display">
+            New printables, straight to your inbox
           </h2>
-          <p className="text-blue-100 mb-6">
-            Use code: <span className="font-mono font-bold text-white">GTSHOP20</span>
+          <p className="text-cream/60 text-sm mb-6">
+            Be first to know about new colouring books, seasonal pages and
+            bundle offers. Unsubscribe anytime.
           </p>
-          <Link
-            href="/products"
-            className="inline-block bg-white text-blue-600 px-10 py-3.5 font-semibold hover:bg-gray-100 transition-colors text-sm tracking-wide"
+          <a
+            href="#newsletter"
+            className="inline-flex items-center gap-2 bg-berry text-white px-8 py-3.5 font-semibold hover:bg-berry-dark transition-colors rounded-full text-sm"
           >
-            Shop Now →
-          </Link>
+            Subscribe below
+          </a>
         </div>
       </section>
     </div>

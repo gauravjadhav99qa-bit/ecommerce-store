@@ -3,29 +3,53 @@ import { notFound } from "next/navigation";
 import AddToCartButton from "./AddToCartButton";
 import ReviewSection from "@/components/ReviewSection";
 import ProductGallery from "@/components/ProductGallery";
+import ProductCard from "@/components/ProductCard";
+import ProductSamplePreviews from "@/components/ProductSamplePreviews";
+import StickyBuyBar from "@/components/StickyBuyBar";
 import Link from "next/link";
 import { parseImages } from "@/lib/utils";
+import {
+  Download,
+  FileText,
+  Printer,
+  Scale,
+  Tag,
+  ArrowRight,
+  ListChecks,
+  Sparkles,
+} from "lucide-react";
+import type { Metadata } from "next";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.gtshoppingonline.in";
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
-}) {
+}): Promise<Metadata> {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
   });
-  if (!product) return { title: "Product Not Found" };
+  if (!product || !product.isActive) return { title: "Not found" };
   const images = parseImages(product.images);
+  const specs = [
+    product.pageCount ? `${product.pageCount} pages` : null,
+    product.paperSize,
+    product.fileFormat || "PDF",
+    "Instant download",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return {
-    title: `${product.name} | GT SHOP`,
-    description:
-      product.description?.slice(0, 160) ||
-      `${product.name} - Quality products at honest prices`,
+    title: product.name,
+    description: product.description?.slice(0, 160) || `${product.name} — printable PDF, instant download.`,
+    alternates: { canonical: `${siteUrl}/products/${product.slug}` },
     openGraph: {
       title: product.name,
       description: product.description || "",
       images: images[0] ? [images[0]] : [],
+      type: "website",
     },
   };
 }
@@ -41,17 +65,35 @@ export default async function ProductDetailPage({
     where: { slug },
     include: {
       category: true,
-      variants: true,
       reviews: {
-        include: { user: { select: { name: true } } },
+        include: { user: { select: { name: true, firstName: true } } },
         orderBy: { createdAt: "desc" },
+      },
+      bundleItems: {
+        include: { product: { include: { category: true } } },
+        orderBy: { sortOrder: "asc" },
       },
     },
   });
 
-  if (!product) notFound();
+  if (!product || !product.isActive || !product.isDigital) notFound();
 
   const images = parseImages(product.images);
+  const bundleProducts = product.bundleItems.map((bi) => bi.product);
+  const bundleValue = bundleProducts.reduce((sum, p) => sum + p.price, 0);
+
+  const related = await prisma.product.findMany({
+    where: {
+      isActive: true,
+      isDigital: true,
+      id: { not: product.id },
+      ...(product.categoryId
+        ? { categoryId: product.categoryId }
+        : { tags: { contains: (JSON.parse(product.tags || "[]")[0] as string) || "" } }),
+    },
+    take: 4,
+    orderBy: { featured: "desc" },
+  });
 
   const avgRating =
     product.reviews.length > 0
@@ -59,136 +101,198 @@ export default async function ProductDetailPage({
         product.reviews.length
       : 0;
 
+  // Derive a simple "what's inside" breakdown from tags + category + page count.
+  const tagList = JSON.parse(product.tags || "[]") as string[];
+  const insideBullets: string[] = [];
+  if (product.pageCount) {
+    insideBullets.push(`${product.pageCount} printable pages`);
+  }
+  if (tagList.includes("mandala")) insideBullets.push("Mandala / mindfulness designs");
+  if (tagList.includes("animals") || tagList.includes("kawaii"))
+    insideBullets.push("Cute animal characters");
+  if (tagList.includes("alphabet")) insideBullets.push("Alphabet tracing practice");
+  if (tagList.includes("numbers")) insideBullets.push("Number recognition & counting");
+  if (tagList.includes("preschool") || tagList.includes("toddler"))
+    insideBullets.push("Preschool-friendly large shapes");
+  if (tagList.includes("mazes")) insideBullets.push("Fun mazes of increasing difficulty");
+  if (tagList.includes("puzzles")) insideBullets.push("Puzzles & spot-the-difference");
+  if (tagList.includes("dinosaurs")) insideBullets.push("Dinosaur scenes");
+  if (tagList.includes("unicorns") || tagList.includes("fantasy"))
+    insideBullets.push("Fantasy & unicorn scenes");
+  if (tagList.includes("planner")) insideBullets.push("Weekly planning layouts");
+  if (tagList.includes("journal")) insideBullets.push("Guided journal prompts");
+  if (insideBullets.length === 0) {
+    insideBullets.push("Print-ready original artwork");
+    insideBullets.push("Thick outlines easy for small hands");
+  }
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    image: images,
+    description: product.description || `${product.name} — printable PDF, instant download.`,
+    sku: product.sku || product.id,
+    brand: { "@type": "Brand", name: "GT Shopping" },
+    offers: {
+      "@type": "Offer",
+      url: `${siteUrl}/products/${product.slug}`,
+      priceCurrency: "INR",
+      price: (product.price / 100).toFixed(2),
+      availability: "https://schema.org/InStock",
+    },
+    aggregateRating:
+      product.reviews.length > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: avgRating.toFixed(1),
+            reviewCount: product.reviews.length,
+          }
+        : undefined,
+  };
+
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: "Shop", item: `${siteUrl}/products` },
+      ...(product.category
+        ? [
+            {
+              "@type": "ListItem",
+              position: 3,
+              name: product.category.name,
+              item: `${siteUrl}/products?category=${product.category.slug}`,
+            },
+          ]
+        : []),
+      {
+        "@type": "ListItem",
+        position: product.category ? 4 : 3,
+        name: product.name,
+      },
+    ],
+  };
+
+  const specs: { icon: React.ElementType; label: string; value: string }[] = [
+    { icon: FileText, label: "Format", value: product.fileFormat || "PDF" },
+    ...(product.pageCount
+      ? [{ icon: FileText, label: "Pages", value: `${product.pageCount} pages` }]
+      : []),
+    ...(product.paperSize
+      ? [{ icon: Printer, label: "Paper size", value: product.paperSize }]
+      : []),
+    {
+      icon: Download,
+      label: "Delivery",
+      value: "Instant download after payment",
+    },
+    { icon: Tag, label: "Licence", value: "Personal / classroom use" },
+  ];
+
   return (
     <>
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Product",
-          "name": product.name,
-          "image": images,
-          "description": product.description || `${product.name} - Quality products at honest prices`,
-          "sku": product.id,
-          "brand": {
-            "@type": "Brand",
-            "name": "GT SHOP"
-          },
-          "offers": {
-            "@type": "Offer",
-            "url": `https://gtshoppingonline.in/products/${product.slug}`,
-            "priceCurrency": "INR",
-            "price": (product.price / 100).toFixed(2),
-            "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
-          },
-          "aggregateRating": product.reviews.length > 0 ? {
-            "@type": "AggregateRating",
-            "ratingValue": avgRating.toFixed(1),
-            "reviewCount": product.reviews.length
-          } : undefined
-        }),
-      }}
-    />
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://gtshoppingonline.in" },
-            { "@type": "ListItem", "position": 2, "name": "Products", "item": "https://gtshoppingonline.in/products" },
-            ...(product.category ? [{ "@type": "ListItem", "position": 3, "name": product.category.name, "item": `https://gtshoppingonline.in/products?category=${product.category.slug}` }] : []),
-            { "@type": "ListItem", "position": product.category ? 4 : 3, "name": product.name }
-          ]
-        }),
-      }}
-    />
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-      <nav className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap">
-        <Link href="/" className="hover:text-gray-900">
-          Home
-        </Link>
-        <span className="mx-1 sm:mx-2">/</span>
-        <Link href="/products" className="hover:text-gray-900">
-          Products
-        </Link>
-        {product.category && (
-          <>
-            <span className="mx-1 sm:mx-2">/</span>
-            <Link
-              href={`/products?category=${product.category.slug}`}
-              className="hover:text-gray-900"
-            >
-              {product.category.name}
-            </Link>
-          </>
-        )}
-        <span className="mx-1 sm:mx-2">/</span>
-        <span className="text-gray-900">{product.name}</span>
-      </nav>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
-        {/* Images */}
-        <div>
-          <ProductGallery images={images} name={product.name} />
-        </div>
-
-        {/* Details */}
-        <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-10">
+        <nav className="text-xs sm:text-sm text-ink-soft mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap">
+          <Link href="/" className="hover:text-berry">
+            Home
+          </Link>
+          <span className="mx-1.5">/</span>
+          <Link href="/products" className="hover:text-berry">
+            Shop
+          </Link>
           {product.category && (
-            <Link
-              href={`/products?category=${product.category.slug}`}
-              className="text-xs sm:text-sm text-gray-500 hover:text-gray-900"
-            >
-              {product.category.name}
-            </Link>
+            <>
+              <span className="mx-1.5">/</span>
+              <Link
+                href={`/products?category=${product.category.slug}`}
+                className="hover:text-berry"
+              >
+                {product.category.name}
+              </Link>
+            </>
           )}
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">{product.name}</h1>
+          <span className="mx-1.5">/</span>
+          <span className="text-ink">{product.name}</span>
+        </nav>
 
-          {avgRating > 0 && (
-            <div className="flex items-center mt-2 sm:mt-3">
-              {[...Array(5)].map((_, i) => (
-                <span
-                  key={i}
-                  className={`text-base sm:text-lg ${i < Math.round(avgRating) ? "text-yellow-400" : "text-gray-300"}`}
-                >
-                  ★
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14">
+          <div>
+            <ProductGallery images={images} name={product.name} />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold text-berry mb-2">
+              <Download size={13} />
+              PDF · INSTANT DOWNLOAD
+              {product.productType === "BUNDLE" && (
+                <span className="bg-marigold text-ink px-2 py-0.5 rounded-full">
+                  BUNDLE · SAVE ₹{((bundleValue - product.price) / 100).toFixed(0)}
                 </span>
-              ))}
-              <span className="text-xs sm:text-sm text-gray-500 ml-2">
-                ({product.reviews.length} reviews)
-              </span>
+              )}
             </div>
-          )}
-
-          <div className="flex items-baseline gap-2 sm:gap-3 mt-4 sm:mt-6">
-            <span className="text-2xl sm:text-3xl font-bold">₹{(product.price / 100).toFixed(0)}</span>
-            {product.compareAt && product.compareAt > product.price && (
-              <span className="text-lg sm:text-xl text-gray-400 line-through">
-                ₹{(product.compareAt / 100).toFixed(0)}
-              </span>
+            {product.category && (
+              <Link
+                href={`/products?category=${product.category.slug}`}
+                className="text-xs text-ink-soft hover:text-berry"
+              >
+                {product.category.name}
+              </Link>
             )}
-          </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-ink mt-1">
+              {product.name}
+            </h1>
 
-          <p className="text-sm sm:text-base text-gray-600 mt-4 sm:mt-6 leading-relaxed">
-            {product.description || "No description available."}
-          </p>
+            {avgRating > 0 && (
+              <div className="flex items-center mt-3">
+                <span className="text-marigold" aria-hidden>
+                  {"★".repeat(Math.round(avgRating))}
+                  <span className="text-cream-dark">
+                    {"★".repeat(5 - Math.round(avgRating))}
+                  </span>
+                </span>
+                <span className="text-xs text-ink-soft ml-2">
+                  {avgRating.toFixed(1)} · {product.reviews.length} review
+                  {product.reviews.length === 1 ? "" : "s"}
+                </span>
+              </div>
+            )}
 
-          <div className="mt-4 sm:mt-6 space-y-2">
-            <div className="flex items-center gap-2 text-xs sm:text-sm">
-              <span className={`w-2 h-2 rounded-full ${product.stock > 0 ? "bg-green-500" : "bg-red-500"}`} />
-              <span className={product.stock > 0 ? "text-green-700" : "text-red-700"}>
-                {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+            <div className="flex items-baseline gap-3 mt-5">
+              <span className="text-3xl font-bold text-berry">
+                ₹{(product.price / 100).toFixed(0)}
               </span>
+              {product.compareAt && product.compareAt > product.price && (
+                <>
+                  <span className="text-lg text-ink-soft/60 line-through">
+                    ₹{(product.compareAt / 100).toFixed(0)}
+                  </span>
+                  <span className="text-xs font-bold text-sage bg-sage/10 px-2 py-1 rounded-full">
+                    {Math.round(
+                      ((product.compareAt - product.price) / product.compareAt) * 100
+                    )}
+                    % OFF
+                  </span>
+                </>
+              )}
             </div>
-            {product.sku && (
-              <p className="text-xs sm:text-sm text-gray-500">SKU: {product.sku}</p>
-            )}
-          </div>
+            <p className="text-[11px] text-ink-soft/70 mt-1">
+              Inclusive of all taxes · one-time payment
+            </p>
 
-          {product.stock > 0 && (
+            <p className="text-ink-soft mt-5 leading-relaxed">
+              {product.description || "No description available."}
+            </p>
+
             <AddToCartButton
               product={{
                 id: product.id,
@@ -196,67 +300,163 @@ export default async function ProductDetailPage({
                 slug: product.slug,
                 price: product.price,
                 image: images[0] || null,
-                stock: product.stock,
               }}
             />
-          )}
 
-          {/* Variants */}
-          {product.variants.length > 0 && (
-            <div className="mt-6 sm:mt-8">
-              <h3 className="font-semibold text-sm sm:text-base mb-2 sm:mb-3">Available Options</h3>
-              <div className="flex flex-wrap gap-2">
-                {product.variants.map((variant) => (
-                  <div
-                    key={variant.id}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-                  >
-                    <span>{variant.name}</span>
-                    <span className="text-gray-500 ml-2">
-                      ₹{(variant.price / 100).toFixed(0)}
-                    </span>
-                    {variant.price !== product.price && (
-                      <span className={`ml-1 text-[10px] font-medium ${variant.price > product.price ? "text-red-500" : "text-green-600"}`}>
-                        {variant.price > product.price ? "+" : ""}₹{((variant.price - product.price) / 100).toFixed(0)}
-                      </span>
-                    )}
+            {/* What's inside */}
+            {insideBullets.length > 0 && (
+              <div className="mt-8 bg-white rounded-2xl border border-cream-dark p-5">
+                <h2 className="font-bold text-ink mb-3 font-display flex items-center gap-2">
+                  <ListChecks size={16} className="text-berry" /> What&apos;s
+                  inside
+                </h2>
+                <ul className="space-y-2">
+                  {insideBullets.map((b) => (
+                    <li
+                      key={b}
+                      className="flex items-start gap-2.5 text-sm text-ink-soft"
+                    >
+                      <Sparkles size={14} className="text-marigold mt-0.5 flex-shrink-0" />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Specs */}
+            <dl className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              {specs.map((spec) => (
+                <div key={spec.label} className="flex items-start gap-2.5">
+                  <spec.icon size={16} className="text-berry mt-0.5" aria-hidden />
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-wide text-ink-soft/70">
+                      {spec.label}
+                    </dt>
+                    <dd className="text-sm font-medium text-ink">{spec.value}</dd>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              ))}
+            </dl>
 
-          {/* Delivery & Returns Info */}
-          <div className="mt-6 sm:mt-8 space-y-3 border-t border-gray-200 pt-6">
-            <h3 className="font-semibold text-sm sm:text-base mb-3">Shipping & Returns</h3>
-            <div className="flex items-start gap-3 text-xs sm:text-sm text-gray-600">
-              <span className="text-green-600 mt-0.5">✓</span>
-              <div>
-                <p className="font-medium text-gray-900">Free Delivery</p>
-                <p>On orders above ₹499. Standard delivery: 5-7 business days.</p>
+            {/* Bundle contents */}
+            {product.productType === "BUNDLE" && bundleProducts.length > 0 && (
+              <div className="mt-8 bg-white rounded-2xl border border-cream-dark p-5">
+                <h2 className="font-bold text-ink mb-3 font-display flex items-center gap-2">
+                  <Tag size={16} className="text-berry" /> What&apos;s included
+                </h2>
+                <ul className="space-y-2.5">
+                  {bundleProducts.map((bp) => (
+                    <li key={bp.id} className="flex items-center justify-between gap-3">
+                      <Link
+                        href={`/products/${bp.slug}`}
+                        className="text-sm text-ink hover:text-berry font-medium"
+                      >
+                        {bp.name}
+                        {bp.pageCount ? (
+                          <span className="text-ink-soft/70 font-normal">
+                            {" "}
+                            · {bp.pageCount} pp
+                          </span>
+                        ) : null}
+                      </Link>
+                      <span className="text-xs text-ink-soft line-through flex-shrink-0">
+                        ₹{(bp.price / 100).toFixed(0)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 pt-3 border-t border-cream-dark text-sm text-ink-soft">
+                  Total value{" "}
+                  <span className="line-through">₹{(bundleValue / 100).toFixed(0)}</span>{" "}
+                  — yours for{" "}
+                  <span className="font-bold text-berry">
+                    ₹{(product.price / 100).toFixed(0)}
+                  </span>
+                </p>
               </div>
+            )}
+
+            {/* Delivery info */}
+            <div className="mt-8 space-y-3 border-t border-cream-dark pt-6">
+              <h3 className="font-bold text-sm text-ink mb-3 font-display">
+                How delivery works
+              </h3>
+              {[
+                {
+                  title: "Instant access",
+                  text: "Download links appear on your order page and in your email the moment payment is confirmed.",
+                },
+                {
+                  title: "Print at home",
+                  text: product.printInstructions ||
+                    "Print at 100% scale on A4 or US Letter paper.",
+                },
+                {
+                  title: "Personal-use licence",
+                  text: product.license ||
+                    "Print unlimited copies for personal or classroom use. Do not resell or share the files.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="flex items-start gap-3 text-sm">
+                  <span className="text-sage mt-0.5">✓</span>
+                  <div>
+                    <p className="font-semibold text-ink">{item.title}</p>
+                    <p className="text-ink-soft leading-relaxed">{item.text}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex items-start gap-3 text-xs sm:text-sm text-gray-600">
-              <span className="text-green-600 mt-0.5">✓</span>
-              <div>
-                <p className="font-medium text-gray-900">7-Day Returns</p>
-                <p>Easy returns within 7 days of delivery. Item must be unused and in original packaging.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 text-xs sm:text-sm text-gray-600">
-              <span className="text-green-600 mt-0.5">✓</span>
-              <div>
-                <p className="font-medium text-gray-900">Secure Payment</p>
-                <p>UPI, Credit/Debit cards accepted. SSL encrypted checkout.</p>
-              </div>
-            </div>
+
+            {product.license && (
+              <details className="mt-4 text-sm text-ink-soft">
+                <summary className="cursor-pointer font-semibold text-ink flex items-center gap-1">
+                  <Scale size={14} /> Full licence terms
+                </summary>
+                <p className="mt-2 leading-relaxed">{product.license}</p>
+              </details>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Reviews */}
-      <ReviewSection productId={product.id} />
-    </div>
+        <ProductSamplePreviews
+          productId={product.id}
+          productName={product.name}
+        />
+
+        {/* Related */}
+        {related.length > 0 && (
+          <section className="mt-16 sm:mt-20">
+            <div className="flex items-end justify-between mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-ink font-display">
+                You may also like
+              </h2>
+              <Link
+                href="/products"
+                className="text-sm font-semibold text-berry hidden sm:flex items-center gap-1"
+              >
+                All printables <ArrowRight size={14} />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+              {related.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <ReviewSection productId={product.id} />
+      </div>
+      <StickyBuyBar
+        product={{
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          price: product.price,
+          image: images[0] || null,
+        }}
+      />
     </>
   );
 }

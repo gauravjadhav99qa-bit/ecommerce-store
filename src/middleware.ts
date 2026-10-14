@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 import { jwtDecrypt } from "jose";
 import { hkdf } from "@panva/hkdf";
 
-const protectedRoutes = ["/checkout"];
 const adminRoutes = ["/admin"];
 const adminLoginRoutes = ["/admin/login"];
 const authRoutes = ["/login", "/register"];
@@ -36,13 +35,25 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") || "";
 
-  if (host === "gtshoppingonline.in" && !pathname.startsWith("/api/")) {
-    const wwwUrl = new URL(request.url);
-    wwwUrl.hostname = "www.gtshoppingonline.in";
-    return NextResponse.redirect(wwwUrl, 308);
+  // www redirect — production only (skip localhost / dev)
+  const isLocal =
+    host.startsWith("localhost") ||
+    host.startsWith("127.0.0.1") ||
+    host.startsWith("[::1]") ||
+    process.env.NODE_ENV === "development";
+  if (!isLocal) {
+    const siteHost =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/^https?:\/\//, "").replace(/\/$/, "") ||
+      "www.gtshoppingonline.in";
+    const bareHost = siteHost.replace(/^www\./, "");
+    if (host === bareHost && !pathname.startsWith("/api/")) {
+      const wwwUrl = new URL(request.url);
+      wwwUrl.hostname = `www.${bareHost}`;
+      return NextResponse.redirect(wwwUrl, 308);
+    }
   }
 
-  const token = request.cookies.get("__Secure-next-auth.session-token")?.value || request.cookies.get("next-auth.session-token")?.value;
+  const token = request.cookies.get("next-auth.session-token")?.value || request.cookies.get("__Secure-next-auth.session-token")?.value;
 
   // Allow admin login page without auth
   if (adminLoginRoutes.includes(pathname)) {
@@ -60,12 +71,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Protect cart/checkout - require any login
-  if (protectedRoutes.includes(pathname) && !token) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
+  // Checkout is guest-friendly: auth is enforced server-side per order.
 
   // Protect admin routes - require ADMIN role
   if (adminRoutes.some((route) => pathname.startsWith(route))) {

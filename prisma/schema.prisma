@@ -17,6 +17,7 @@ model User {
   email         String?   @unique
   phone         String?   @unique
   emailVerified DateTime?
+  phoneVerified DateTime?
   password      String?
   image         String?
   role          Role      @default(CUSTOMER)
@@ -98,19 +99,67 @@ model Product {
   featured    Boolean  @default(false)
   isDigital   Boolean  @default(false)
   downloadUrl String?
-  categoryId  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  category   Category?  @relation(fields: [categoryId], references: [id])
-  variants   Variant[]
-  orderItems OrderItem[]
-  reviews    Review[]
+  // Digital product metadata
+  productType     ProductType @default(SINGLE)
+  tags            String      @default("[]")
+  pageCount       Int?
+  paperSize       String?
+  fileFormat      String?
+  printInstructions String?
+  license         String?
+
+  categoryId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category    Category?     @relation(fields: [categoryId], references: [id])
+  variants    Variant[]
+  orderItems  OrderItem[]
+  reviews     Review[]
+  files       ProductFile[]
+  bundleItems BundleItem[]  @relation("BundleContents")
+  bundles     BundleItem[]  @relation("InBundle")
 
   @@index([categoryId])
   @@index([price])
   @@index([createdAt])
   @@map("products")
+}
+
+enum ProductType {
+  SINGLE
+  BUNDLE
+}
+
+model ProductFile {
+  id          String  @id @default(cuid())
+  productId   String
+  fileName    String
+  storagePath String
+  mimeType    String  @default("application/pdf")
+  sizeBytes   Int     @default(0)
+  sortOrder   Int     @default(0)
+  createdAt   DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_files")
+}
+
+model BundleItem {
+  id         String  @id @default(cuid())
+  bundleId   String
+  productId  String
+  sortOrder  Int     @default(0)
+
+  bundle  Product @relation("BundleContents", fields: [bundleId], references: [id], onDelete: Cascade)
+  product Product @relation("InBundle", fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, productId])
+  @@index([productId])
+  @@map("bundle_items")
 }
 
 model Variant {
@@ -134,16 +183,18 @@ model Order {
   shippingName  String
   shippingEmail String
   shippingPhone String?
-  shippingAddr  String
+  shippingAddr  String?
   paymentIntent String?
+  razorpayOrderId String? @unique
   paidAt        DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id])
 
-  items OrderItem[]
+  items          OrderItem[]
+  downloadEvents DownloadEvent[]
 
   @@index([userId])
   @@index([status])
@@ -161,10 +212,37 @@ model OrderItem {
   productId String
   orderId   String
 
-  product Product @relation(fields: [productId], references: [id])
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id])
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  downloadEvents DownloadEvent[]
 
   @@map("order_items")
+}
+
+model DownloadEvent {
+  id          String   @id @default(cuid())
+  orderItemId String
+  orderId     String
+  fileName    String?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@index([orderId])
+  @@map("download_events")
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("footer")
+  consentAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@map("newsletter_subscribers")
 }
 
 model Review {
@@ -194,6 +272,10 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  PAID
+  COMPLETED
+  FAILED
+  REFUNDED
 }
 
 model Otp {

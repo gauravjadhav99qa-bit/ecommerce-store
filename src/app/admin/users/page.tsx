@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, X, Users, Shield, User, Mail, Phone, Calendar, Trash2 } from "lucide-react";
+import { Search, X, Users, Shield, User, Mail, Phone, Calendar, Trash2, Plus, UserPlus } from "lucide-react";
 
 interface UserItem {
   id: string;
@@ -19,6 +19,11 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [createError, setCreateError] = useState("");
+  const [createSuccess, setCreateSuccess] = useState("");
 
   const fetchUsers = () => {
     fetch("/api/admin/users")
@@ -57,6 +62,34 @@ export default function AdminUsersPage() {
     }
   };
 
+  const createUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    setCreateError("");
+    setCreateSuccess("");
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateError(data.error || "Failed to create user");
+        return;
+      }
+      setCreateSuccess(`User ${createForm.email} created`);
+      setCreateForm({ name: "", email: "", phone: "", password: "" });
+      fetchUsers();
+      setTimeout(() => setShowCreate(false), 1200);
+    } catch {
+      setCreateError("Something went wrong");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="text-gray-500 text-sm">Loading customers...</div></div>;
   }
@@ -68,7 +101,98 @@ export default function AdminUsersPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Customers</h1>
           <p className="text-sm text-gray-500 mt-1">{filtered.length} customer{filtered.length !== 1 ? "s" : ""}</p>
         </div>
+        <button
+          onClick={() => { setShowCreate(!showCreate); setCreateError(""); setCreateSuccess(""); }}
+          className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800"
+        >
+          <Plus size={16} />
+          Create User
+        </button>
       </div>
+
+      {/* Create User Form */}
+      {showCreate && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <UserPlus size={18} />
+            New Customer Account
+          </h2>
+          {createError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg mb-4 text-sm">
+              {createError}
+            </div>
+          )}
+          {createSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2.5 rounded-lg mb-4 text-sm">
+              {createSuccess}
+            </div>
+          )}
+          <form onSubmit={createUser} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Full Name *</label>
+              <input
+                type="text"
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                required
+                placeholder="Customer name"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
+              <input
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                required
+                placeholder="customer@example.com"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Mobile Number *</label>
+              <input
+                type="tel"
+                value={createForm.phone}
+                onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                required
+                placeholder="9876543210"
+                maxLength={10}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Password *</label>
+              <input
+                type="password"
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                required
+                minLength={6}
+                placeholder="At least 6 characters"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+            <div className="sm:col-span-2 flex gap-3">
+              <button
+                type="submit"
+                disabled={creating || !createForm.name || !createForm.email || !createForm.phone || !createForm.password}
+                className="bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+              >
+                {creating ? "Creating..." : "Create Customer"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-6">

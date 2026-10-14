@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/admin", "/api", "/account"],
       },
     ],
-    sitemap: "https://gtshoppingonline.in/sitemap.xml",
+    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.gtshoppingonline.in"}/sitemap.xml`,
   };
 }

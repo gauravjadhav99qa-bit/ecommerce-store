@@ -16,11 +16,15 @@ declare module "next-auth" {
       phone: string | null;
       image: string | null;
       role: string;
+      emailVerified: boolean;
+      phoneVerified: boolean;
     };
   }
   interface User {
     role: string;
     phone?: string | null;
+    emailVerified?: boolean | Date | null;
+    phoneVerified?: boolean | Date | null;
   }
 }
 
@@ -33,11 +37,42 @@ declare module "next-auth/jwt" {
     lastName: string | null;
     gender: string | null;
     dob: string | null;
+    emailVerified: boolean;
+    phoneVerified: boolean;
   }
 }
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
+  cookies: {
+    sessionToken: {
+      name: "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: false,
+      },
+    },
+    callbackUrl: {
+      name: "next-auth.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: false,
+      },
+    },
+    csrfToken: {
+      name: "next-auth.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: false,
+      },
+    },
+  },
   providers: [
     CredentialsProvider({
       name: "email",
@@ -65,6 +100,8 @@ export const authOptions: NextAuthOptions = {
             image: user.image,
             role: user.role,
             phone: user.phone,
+            emailVerified: user.emailVerified,
+            phoneVerified: user.phoneVerified,
           };
         } catch (error) {
           console.error("[AUTH] Authorize error:", error);
@@ -80,12 +117,24 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.phone = user.phone ?? null;
+        token.emailVerified = Boolean(user.emailVerified);
+        token.phoneVerified = Boolean(user.phoneVerified);
       }
       if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id },
-            select: { name: true, role: true, phone: true, firstName: true, lastName: true, gender: true, dob: true },
+            select: {
+              name: true,
+              role: true,
+              phone: true,
+              firstName: true,
+              lastName: true,
+              gender: true,
+              dob: true,
+              emailVerified: true,
+              phoneVerified: true,
+            },
           });
           if (dbUser) {
             token.name = dbUser.name;
@@ -95,6 +144,8 @@ export const authOptions: NextAuthOptions = {
             token.lastName = dbUser.lastName;
             token.gender = dbUser.gender;
             token.dob = dbUser.dob?.toISOString() || null;
+            token.emailVerified = Boolean(dbUser.emailVerified);
+            token.phoneVerified = Boolean(dbUser.phoneVerified);
           }
         } catch {
           // DB query failed — keep existing token values
@@ -111,6 +162,8 @@ export const authOptions: NextAuthOptions = {
         session.user.lastName = token.lastName;
         session.user.gender = token.gender;
         session.user.dob = token.dob;
+        session.user.emailVerified = Boolean(token.emailVerified);
+        session.user.phoneVerified = Boolean(token.phoneVerified);
       }
       return session;
     },

@@ -1,113 +1,159 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Download, Check, FileText } from "lucide-react";
+import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { Download, FileText, LogIn, ShieldAlert } from "lucide-react";
 
-interface DownloadItem {
+type FileRow = {
+  id: string;
+  fileName: string;
+  sizeBytes: number;
+  url: string;
+};
+type ItemRow = {
+  id: string;
   name: string;
-  downloadUrl: string;
+  image: string | null;
+  files: FileRow[];
+};
+
+function formatSize(bytes: number): string {
+  if (!bytes) return "";
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-export default function DownloadPage() {
-  const params = useParams();
-  const orderNumber = params.orderNumber as string;
+export default function DownloadPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ orderNumber: string }>;
+  searchParams: Promise<{ t?: string }>;
+}) {
+  const { orderNumber } = use(params);
+  const { t } = use(searchParams);
+  const [data, setData] = useState<{
+    items: ItemRow[];
+    status: string;
+    paidAt: string | null;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [items, setItems] = useState<DownloadItem[]>([]);
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const res = await fetch(`/api/downloads/${orderNumber}`);
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || "Order not found");
-          return;
-        }
-        setItems(data.items);
-      } catch {
-        setError("Failed to load download links");
-      } finally {
-        setLoading(false);
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const qs = t ? `?t=${encodeURIComponent(t)}` : "";
+      const res = await fetch(`/api/downloads/${orderNumber}${qs}`);
+      if (cancelled) return;
+      if (res.ok) {
+        setData(await res.json());
+        setError(null);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error || "Not authorized");
+        setData(null);
       }
+      setLoading(false);
+    }
+    load();
+    return () => {
+      cancelled = true;
     };
-    fetchOrder();
-  }, [orderNumber]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Loading download links...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 p-8 text-center">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Order Not Found</h1>
-          <p className="text-gray-500 text-sm mb-6">{error}</p>
-          <Link href="/" className="text-blue-600 text-sm font-semibold hover:underline">
-            Back to Home
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  }, [orderNumber, t]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-lg mx-auto px-4 sm:px-5 py-12 sm:py-16">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 text-center mb-6">
-          <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="w-7 h-7 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Download Ready</h1>
-          <p className="text-gray-500 text-sm mb-1">
-            Order <span className="font-mono font-bold text-gray-900">{orderNumber}</span>
-          </p>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      <div className="text-center mb-8">
+        <div className="w-14 h-14 rounded-full bg-berry/10 flex items-center justify-center mx-auto mb-4">
+          <Download size={26} className="text-berry" />
         </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-ink font-display">
+          Your downloads
+        </h1>
+        <p className="text-ink-soft text-sm mt-2">
+          Order {orderNumber} · links are time-limited for your security
+        </p>
+      </div>
 
-        <div className="space-y-3">
-          {items.map((item, i) => (
-            <div
-              key={i}
-              className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-900 truncate">{item.name}</span>
-              </div>
-              <a
-                href={item.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors flex-shrink-0 ml-3"
-              >
-                <Download className="w-3.5 h-3.5" /> Download
-              </a>
-            </div>
-          ))}
-        </div>
+      {loading && (
+        <p className="text-center text-ink-soft text-sm py-10">Loading your files…</p>
+      )}
 
-        {items.length === 0 && (
-          <div className="text-center py-10 text-gray-400 text-sm">
-            No downloadable files found for this order.
-          </div>
-        )}
-
-        <div className="text-center mt-8">
-          <p className="text-gray-400 text-xs mb-4">
-            Save these files to your device. A copy was also sent to your email.
+      {!loading && error && (
+        <div className="bg-white rounded-2xl border border-cream-dark p-8 text-center">
+          <ShieldAlert size={28} className="mx-auto text-marigold mb-3" />
+          <p className="text-ink font-semibold mb-1">{error}</p>
+          <p className="text-ink-soft text-sm mb-6">
+            Sign in with the email you used at checkout to access your purchase.
           </p>
-          <Link href="/" className="text-blue-600 text-sm font-semibold hover:underline">
-            Continue Shopping →
+          <Link
+            href={`/login?callbackUrl=${encodeURIComponent(`/download/${orderNumber}${t ? `?t=${t}` : ""}`)}`}
+            className="inline-flex items-center gap-2 bg-berry text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-berry-dark transition-colors"
+          >
+            <LogIn size={16} /> Sign in
           </Link>
         </div>
-      </div>
+      )}
+
+      {!loading && data && (
+        <div className="space-y-4">
+          {data.items.map((item: ItemRow) => (
+            <div
+              key={item.id}
+              className="bg-white rounded-2xl border border-cream-dark p-5"
+            >
+              <div className="flex items-center gap-4 mb-4">
+                {item.image ? (
+                  <img
+                    src={item.image}
+                    alt=""
+                    className="w-16 h-16 rounded-xl object-cover border border-cream-dark"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-cream-dark" />
+                )}
+                <div>
+                  <h2 className="font-semibold text-ink">{item.name}</h2>
+                  <p className="text-xs text-ink-soft">
+                    {item.files.length} file{item.files.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+              <ul className="space-y-2">
+                {item.files.map((file) => (
+                  <li key={file.id}>
+                    <a
+                      href={file.url}
+                      className="flex items-center justify-between gap-3 bg-cream rounded-xl px-4 py-3 hover:bg-cream-dark transition-colors group"
+                      download
+                    >
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <FileText size={17} className="text-berry flex-shrink-0" />
+                        <span className="text-sm text-ink truncate">
+                          {file.fileName}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold text-berry flex-shrink-0 flex items-center gap-1 group-hover:underline">
+                        <Download size={14} />
+                        Download {formatSize(file.sizeBytes)}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p className="text-xs text-ink-soft text-center pt-2">
+            Links refresh automatically each time you open this page. Need help?{" "}
+            <Link href="/contact" className="text-berry font-semibold hover:underline">
+              Contact us
+            </Link>
+            .
+          </p>
+        </div>
+      )}
     </div>
   );
 }

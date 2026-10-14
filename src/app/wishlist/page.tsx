@@ -18,7 +18,6 @@ export default function WishlistPage() {
       slug: item.slug,
       price: item.price,
       image: item.image,
-      stock: 999,
     });
     setAddedIds((prev) => new Set(prev).add(item.id));
     setTimeout(() => {

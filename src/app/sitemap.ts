@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://gtshoppingonline.in";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.gtshoppingonline.in";
 
   const products = await prisma.product.findMany({
     where: { isActive: true },
@@ -29,7 +29,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${baseUrl}/free`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
     ...productUrls,
+    {
+      url: `${baseUrl}/about`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/faq`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.4,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
     {
       url: `${baseUrl}/privacy-policy`,
       lastModified: new Date(),
@@ -37,13 +61,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
     {
-      url: `${baseUrl}/return-policy`,
+      url: `${baseUrl}/refund-policy`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.3,
     },
     {
-      url: `${baseUrl}/shipping-policy`,
+      url: `${baseUrl}/license`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.3,

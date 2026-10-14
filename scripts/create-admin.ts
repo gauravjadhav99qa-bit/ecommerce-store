@@ -9,9 +9,16 @@ async function main() {
   });
   const prisma = new PrismaClient({ adapter });
 
-  const email = "gaurav.jadhav561@gmail.com";
-  const password = "Gaurav@007";
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    console.error("Set ADMIN_EMAIL and ADMIN_PASSWORD in .env first");
+    process.exit(1);
+  }
+
   const hashedPassword = await bcrypt.hash(password, 12);
+  const name = process.env.ADMIN_NAME || "Admin";
 
   const existing = await prisma.user.findUnique({ where: { email } });
 
@@ -21,7 +28,7 @@ async function main() {
       data: {
         password: hashedPassword,
         role: "ADMIN",
-        name: "Gaurav Jadhav",
+        name,
       },
     });
     console.log(`Admin updated: ${email}`);
@@ -31,7 +38,7 @@ async function main() {
         email,
         password: hashedPassword,
         role: "ADMIN",
-        name: "Gaurav Jadhav",
+        name,
       },
     });
     console.log(`Admin created: ${email}`);

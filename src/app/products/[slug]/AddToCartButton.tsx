@@ -1,8 +1,7 @@
 "use client";
 
 import { useCart } from "@/stores/cart";
-import { ShoppingBag, Plus, Minus } from "lucide-react";
-import { useState } from "react";
+import { ShoppingBag, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface AddToCartButtonProps {
@@ -12,46 +11,39 @@ interface AddToCartButtonProps {
     slug: string;
     price: number;
     image: string | null;
-    stock: number;
   };
 }
 
 export default function AddToCartButton({ product }: AddToCartButtonProps) {
-  const [quantity, setQuantity] = useState(1);
   const addItem = useCart((s) => s.addItem);
   const router = useRouter();
 
   const handleAdd = () => {
-    addItem(product, quantity);
+    addItem(product, 1);
     router.push("/cart");
   };
 
+  const handleBuyNow = () => {
+    addItem(product, 1);
+    router.push("/checkout");
+  };
+
   return (
-    <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="flex items-center border border-gray-300 rounded-lg">
-          <button
-            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            className="p-3 sm:p-3 hover:bg-gray-100 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-          >
-            <Minus size={16} />
-          </button>
-          <span className="px-3 sm:px-4 font-medium min-w-[40px] text-center">{quantity}</span>
-          <button
-            onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-            className="p-3 sm:p-3 hover:bg-gray-100 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-        <button
-          onClick={handleAdd}
-          className="flex-1 bg-gray-900 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 min-h-[44px]"
-        >
-          <ShoppingBag size={18} />
-          Add to Cart
-        </button>
-      </div>
+    <div className="mt-6 sm:mt-8 space-y-3">
+      <button
+        onClick={handleBuyNow}
+        className="w-full bg-berry text-white py-3.5 px-6 rounded-full font-semibold hover:bg-berry-dark transition-colors flex items-center justify-center gap-2 min-h-[48px] shadow-lg shadow-berry/20"
+      >
+        <Zap size={18} />
+        Buy now — instant download
+      </button>
+      <button
+        onClick={handleAdd}
+        className="w-full border-2 border-ink/15 text-ink py-3.5 px-6 rounded-full font-semibold hover:border-berry hover:text-berry transition-colors flex items-center justify-center gap-2 min-h-[48px]"
+      >
+        <ShoppingBag size={18} />
+        Add to cart
+      </button>
     </div>
   );
 }

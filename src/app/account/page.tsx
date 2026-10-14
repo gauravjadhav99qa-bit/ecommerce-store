@@ -1,20 +1,15 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  User,
   Package,
-  ShoppingBag,
   LogOut,
   Phone,
   Mail,
-  MapPin,
-  RotateCcw,
+  Download,
   Heart,
-  CreditCard,
   ChevronRight,
   Check,
 } from "lucide-react";
@@ -30,7 +25,6 @@ interface UserProfile {
 
 export default function AccountPage() {
   const { data: session, status, update } = useSession();
-  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
@@ -97,10 +91,9 @@ export default function AccountPage() {
 
   const menuItems = [
     { icon: Package, label: "My Orders", href: "/account/orders" },
+    { icon: Download, label: "My Downloads", href: "/account/downloads" },
     { icon: Phone, label: "Phone Number", href: null },
     { icon: Mail, label: "Email Address", href: null },
-    { icon: MapPin, label: "My Address", href: "/account/address" },
-    { icon: RotateCcw, label: "My Returns", href: "/account/returns" },
     { icon: Heart, label: "My Wishlist", href: "/wishlist" },
   ];
 

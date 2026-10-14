@@ -2,145 +2,144 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { parseImages } from "@/lib/utils";
-import { sendOrderConfirmation } from "@/lib/email";
-import { validateCoupon, incrementCouponUsage, getCouponByCode } from "@/lib/coupons";
+import { validateCoupon, getCouponByCode, incrementCouponUsage } from "@/lib/coupons";
+import { z } from "zod";
 
-interface OrderItem {
-  productId: string;
-  quantity: number;
+const schema = z.object({
+  items: z
+    .array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1).max(1) }))
+    .min(1)
+    .max(50),
+  customer: z.object({
+    name: z.string().min(2).max(120),
+    email: z.string().email().max(200),
+    phone: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile required"),
+  }),
+  couponCode: z.string().max(40).optional(),
+});
+
+async function generateOrderNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const rand = Math.floor(100000 + Math.random() * 900000);
+    const orderNumber = `IB-${rand}`;
+    const existing = await prisma.order.findUnique({ where: { orderNumber } });
+    if (!existing) return orderNumber;
+  }
+  throw new Error("Could not generate order number");
 }
-
-interface ShippingInfo {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  country: string;
-}
-
-const FREE_SHIPPING_THRESHOLD = 49900;
-const SHIPPING_COST = 4900;
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser(req);
     const session = await getServerSession(authOptions);
-    const body = await req.json();
-    const { items, shipping, couponCode } = body as {
-      items: OrderItem[];
-      shipping: ShippingInfo;
-      couponCode?: string;
-    };
-
-    if (!items || items.length === 0) {
-      return NextResponse.json({ error: "No items in cart" }, { status: 400 });
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    if (!shipping?.name || !shipping?.email || !shipping?.phone || !shipping?.address || !shipping?.city || !shipping?.state || !shipping?.zip) {
-      return NextResponse.json({ error: "Shipping information is incomplete" }, { status: 400 });
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Please provide your name, email, mobile and cart items" },
+        { status: 400 }
+      );
+    }
+    const { items, customer, couponCode } = parsed.data;
+    const email = customer.email.toLowerCase().trim();
+    const phoneDigits = customer.phone.replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(phoneDigits)) {
+      return NextResponse.json(
+        { error: "A valid 10-digit mobile number is required." },
+        { status: 400 }
+      );
     }
 
+    // Server-side price lookup — never trust client prices.
     let subtotal = 0;
-    const validItems: Array<{ item: OrderItem; product: any }> = [];
-
+    const validItems: Array<{ productId: string; product: any }> = [];
     for (const item of items) {
-      const product = await prisma.product.findUnique({ where: { id: item.productId } });
-      if (!product) {
-        return NextResponse.json({ error: "Some products are no longer available" }, { status: 400 });
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+      });
+      if (!product || !product.isActive || !product.isDigital) {
+        return NextResponse.json(
+          { error: "Some products in your cart are no longer available" },
+          { status: 400 }
+        );
       }
-      if (product.stock < item.quantity) {
-        return NextResponse.json({ error: `Product "${product.name}" is out of stock (available: ${product.stock})` }, { status: 400 });
-      }
-      subtotal += product.price * item.quantity;
-      validItems.push({ item, product });
+      subtotal += product.price;
+      validItems.push({ productId: item.productId, product });
     }
 
     let discount = 0;
+    let appliedCouponId: string | null = null;
     if (couponCode) {
-      const couponResult = await validateCoupon(couponCode, subtotal);
-      if (couponResult.valid) {
-        discount = couponResult.discount;
+      const couponResult = await validateCoupon(couponCode.toUpperCase(), subtotal);
+      if (!couponResult.valid) {
+        return NextResponse.json(
+          { error: couponResult.error || "Invalid coupon code" },
+          { status: 400 }
+        );
       }
+      discount = couponResult.discount;
+      appliedCouponId = couponResult.coupon?.id || null;
     }
 
-    const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-    const total = subtotal - discount + shippingCost;
-
-    let userId = session?.user?.id;
-    if (!userId) {
-      let existingUser = await prisma.user.findUnique({ where: { email: shipping.email } });
-      if (!existingUser) {
-        existingUser = await prisma.user.findUnique({ where: { phone: shipping.phone } });
-      }
-      if (existingUser) {
-        userId = existingUser.id;
-      } else {
-        const guestUser = await prisma.user.create({
-          data: {
-            name: shipping.name,
-            email: shipping.email,
-            phone: shipping.phone,
-          },
-        });
-        userId = guestUser.id;
-      }
+    const total = Math.max(0, subtotal - discount);
+    if (total < 100) {
+      return NextResponse.json(
+        { error: "Order total must be at least ₹1" },
+        { status: 400 }
+      );
     }
 
-    let orderNumber: string;
-    let attempts = 0;
-    do {
-      const rand = Math.floor(100000 + Math.random() * 900000);
-      orderNumber = `GT-${rand}`;
-      attempts++;
-    } while (attempts < 10);
+    // Attach purchases to the logged-in user when available; guest checkout allowed.
+    const userId = sessionUser?.id || null;
+    const shippingPhone = phoneDigits;
+
+    const orderNumber = await generateOrderNumber();
 
     const order = await prisma.order.create({
       data: {
         orderNumber,
+        status: "PENDING",
         total,
-        shippingName: shipping.name,
-        shippingEmail: shipping.email,
-        shippingPhone: shipping.phone,
-        shippingAddr: JSON.stringify({ ...shipping, discount, couponCode: couponCode || null }),
-        userId,
+        shippingName: customer.name,
+        shippingEmail: email,
+        shippingPhone,
+        shippingAddr: JSON.stringify({
+          discount,
+          couponCode: couponCode ? couponCode.toUpperCase() : null,
+          subtotal,
+        }),
+        userId: sessionUser?.id,
         items: {
-          create: validItems.map(({ item, product }) => ({
+          create: validItems.map(({ productId, product }) => ({
             name: product.name,
             price: product.price,
-            quantity: item.quantity,
+            quantity: 1,
             image: parseImages(product.images)[0] || null,
-            productId: item.productId,
+            isDigital: true,
+            productId,
           })),
         },
       },
       include: { items: true },
     });
 
-    for (const { item } of validItems) {
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } },
-      });
+    if (appliedCouponId) {
+      await incrementCouponUsage(appliedCouponId);
     }
 
-    if (couponCode) {
-      const coupon = await getCouponByCode(couponCode);
-      if (coupon) await incrementCouponUsage(coupon.id);
-    }
-
-    if (shipping.email) {
-      sendOrderConfirmation(
-        shipping.email,
-        order.orderNumber,
-        order.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
-        total,
-      ).catch((err) => console.error("[Order Email] Failed:", err));
-    }
-
-    return NextResponse.json({ orderNumber: order.orderNumber, total });
+    return NextResponse.json({
+      orderNumber: order.orderNumber,
+      orderId: order.id,
+      total: order.total,
+    });
   } catch (error) {
     console.error("Order creation error:", error);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });

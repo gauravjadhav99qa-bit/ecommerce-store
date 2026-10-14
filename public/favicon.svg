@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
-  <text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle">GT</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#FDF8F3"/>
+  <circle cx="256" cy="272" r="128" fill="#C2517E"/>
+  <path d="M256 128c0-32 24-56 56-64-8 32-24 56-56 64z" fill="#5E8C3A"/>
+  <circle cx="208" cy="256" r="18" fill="#A33D66"/>
+  <circle cx="272" cy="232" r="18" fill="#A33D66"/>
+  <circle cx="296" cy="288" r="18" fill="#A33D66"/>
+  <circle cx="232" cy="312" r="18" fill="#A33D66"/>
+  <text x="256" y="460" text-anchor="middle" font-family="Georgia, serif" font-size="52" font-weight="700" fill="#2B2118">GT</text>
 </svg>

@@ -19,20 +19,14 @@ interface InvoiceData {
   date: string;
   items: InvoiceItem[];
   subtotal: number;
+  discount: number;
+  couponCode: string | null;
   shippingCost: number;
   total: number;
   billing: {
     name: string;
     email: string;
     phone: string | null;
-  };
-  shippingAddress: {
-    name: string;
-    address: string;
-    city: string;
-    state: string;
-    zip: string;
-    country: string;
   };
   status: string;
 }
@@ -117,8 +111,8 @@ export default function InvoicePage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mb-8 sm:mb-10 pb-6 sm:pb-8 border-b border-gray-200">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">GT SHOP</h1>
-            <p className="text-sm text-gray-500 mt-1">Quality Products at Honest Prices</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">GT Shopping</h1>
+            <p className="text-sm text-gray-500 mt-1">Print. Colour. Create.</p>
             <p className="text-xs text-gray-400 mt-0.5">gtshoppingonline.in</p>
           </div>
           <div className="text-left sm:text-right">
@@ -146,11 +140,11 @@ export default function InvoicePage() {
           </div>
         </div>
 
-        {/* Billing & Shipping */}
+        {/* Billing & Delivery */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-10">
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Bill To
+              Billed To
             </h3>
             <div className="text-sm text-gray-700 space-y-0.5">
               <p className="font-medium text-gray-900">{invoice.billing.name}</p>
@@ -160,17 +154,12 @@ export default function InvoicePage() {
           </div>
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Ship To
+              Delivery
             </h3>
             <div className="text-sm text-gray-700 space-y-0.5">
-              <p className="font-medium text-gray-900">{invoice.shippingAddress.name}</p>
-              <p>{invoice.shippingAddress.address}</p>
-              <p>
-                {invoice.shippingAddress.city}
-                {invoice.shippingAddress.state ? `, ${invoice.shippingAddress.state}` : ""}{" "}
-                {invoice.shippingAddress.zip}
-              </p>
-              <p>{invoice.shippingAddress.country}</p>
+              <p className="font-medium text-gray-900">Digital download (PDF)</p>
+              <p>Links emailed to {invoice.billing.email}</p>
+              <p>Re-download anytime from your account</p>
             </div>
           </div>
         </div>
@@ -210,9 +199,15 @@ export default function InvoicePage() {
               <span className="text-gray-600">Subtotal</span>
               <span className="text-gray-900">₹{(invoice.subtotal / 100).toFixed(0)}</span>
             </div>
+            {invoice.discount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Discount {invoice.couponCode ? `(${invoice.couponCode})` : ""}</span>
+                <span>-₹{(invoice.discount / 100).toFixed(0)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Shipping</span>
-              <span className="text-green-600 font-medium">Free</span>
+              <span className="text-gray-600">Delivery</span>
+              <span className="text-green-600 font-medium">Instant download</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Tax (GST)</span>
@@ -228,14 +223,14 @@ export default function InvoicePage() {
         {/* Payment Method */}
         <div className="bg-gray-50 rounded-lg p-4 mb-8 sm:mb-10">
           <p className="text-sm text-gray-600">
-            <span className="font-medium text-gray-900">Payment Method:</span> Cash on Delivery
+            <span className="font-medium text-gray-900">Payment Method:</span> Razorpay (UPI / Cards / Netbanking)
           </p>
         </div>
 
         {/* Footer */}
         <div className="text-center text-xs text-gray-400 pt-6 border-t border-gray-100">
-          <p>Thank you for shopping with GT SHOP!</p>
-          <p className="mt-1">For queries, contact us at gtshoppingonline.in</p>
+          <p>Thank you for buying from GT Shopping!</p>
+          <p className="mt-1">For queries, contact us at hello@gtshoppingonline.in</p>
         </div>
       </div>
     </div>

@@ -24,14 +24,15 @@ interface Order {
   items: OrderItem[];
 }
 
-const STATUS_OPTIONS = ["ALL", "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
+const STATUS_OPTIONS = ["ALL", "PENDING", "PAID", "COMPLETED", "FAILED", "REFUNDED", "CANCELLED"];
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-700",
-  PROCESSING: "bg-blue-100 text-blue-700",
-  SHIPPED: "bg-indigo-100 text-indigo-700",
-  DELIVERED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-700",
+  PAID: "bg-blue-100 text-blue-700",
+  COMPLETED: "bg-green-100 text-green-700",
+  FAILED: "bg-red-100 text-red-700",
+  REFUNDED: "bg-orange-100 text-orange-700",
+  CANCELLED: "bg-gray-100 text-gray-500",
 };
 
 export default function AdminOrdersPage() {
@@ -62,18 +63,11 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     if (selectedOrder) {
-      let addr = "";
-      if (selectedOrder.shippingAddr) {
-        try {
-          const parsed = JSON.parse(selectedOrder.shippingAddr);
-          addr = [parsed.address, `${parsed.city}, ${parsed.state} ${parsed.zip}`].filter(Boolean).join(", ");
-        } catch { addr = selectedOrder.shippingAddr; }
-      }
       setEditForm({
         shippingName: selectedOrder.shippingName || "",
         shippingEmail: selectedOrder.shippingEmail || "",
         shippingPhone: selectedOrder.shippingPhone || "",
-        shippingAddr: addr,
+        shippingAddr: "",
       });
     }
   }, [selectedOrder]);
@@ -89,33 +83,9 @@ export default function AdminOrdersPage() {
     );
   });
 
-  const updateStatus = async (id: string, status: string) => {
-    await fetch("/api/admin/orders", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
-    fetchOrders();
-    if (selectedOrder?.id === id) {
-      setSelectedOrder((prev) => (prev ? { ...prev, status } : null));
-    }
-  };
-
   const saveOrder = async () => {
     if (!selectedOrder) return;
     setSaving(true);
-    let addrJson = "";
-    try {
-      const parts = editForm.shippingAddr.split(",").map(s => s.trim());
-      const stateZip = parts[parts.length - 1]?.split(" ") || [];
-      addrJson = JSON.stringify({
-        address: parts[0] || "",
-        city: parts[1] || "",
-        state: stateZip.slice(0, -1).join(" ") || "",
-        zip: stateZip[stateZip.length - 1] || "",
-        country: "India",
-      });
-    } catch { addrJson = editForm.shippingAddr; }
 
     await fetch("/api/admin/orders", {
       method: "PUT",
@@ -125,7 +95,6 @@ export default function AdminOrdersPage() {
         shippingName: editForm.shippingName,
         shippingEmail: editForm.shippingEmail,
         shippingPhone: editForm.shippingPhone,
-        shippingAddr: addrJson,
       }),
     });
     await fetchOrders();
@@ -244,15 +213,9 @@ export default function AdminOrdersPage() {
                   </td>
                   <td className="px-6 py-4 text-sm font-medium">₹{(order.total / 100).toLocaleString("en-IN")}</td>
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      value={order.status}
-                      onChange={(e) => updateStatus(order.id, e.target.value)}
-                      className={`text-xs font-medium rounded-full px-3 py-1.5 border-0 cursor-pointer ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-600"}`}
-                    >
-                      {STATUS_OPTIONS.filter(s => s !== "ALL").map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                    <span className={`text-xs font-medium rounded-full px-3 py-1.5 inline-block ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-600"}`}>
+                      {order.status}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString("en-IN")}</td>
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -290,15 +253,9 @@ export default function AdminOrdersPage() {
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-              <select
-                value={order.status}
-                onChange={(e) => updateStatus(order.id, e.target.value)}
-                className={`text-xs font-medium rounded-full px-3 py-1.5 border-0 cursor-pointer ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-600"}`}
-              >
-                {STATUS_OPTIONS.filter(s => s !== "ALL").map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              <span className={`text-xs font-medium rounded-full px-3 py-1.5 ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-600"}`}>
+                {order.status}
+              </span>
               <button
                 onClick={() => deleteOrder(order.id, order.orderNumber)}
                 className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
@@ -332,25 +289,22 @@ export default function AdminOrdersPage() {
               </div>
             </div>
             <div className="p-6 space-y-6">
-              {/* Status */}
+              {/* Status (read-only — set automatically by payment) */}
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</label>
                 <div className="mt-2">
-                  <select
-                    value={selectedOrder.status}
-                    onChange={(e) => { updateStatus(selectedOrder.id, e.target.value); setSelectedOrder({ ...selectedOrder, status: e.target.value }); }}
-                    className={`text-sm font-medium rounded-lg px-4 py-2 border-0 cursor-pointer ${STATUS_COLORS[selectedOrder.status] || "bg-gray-100 text-gray-600"}`}
-                  >
-                    {STATUS_OPTIONS.filter(s => s !== "ALL").map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  <span className={`text-sm font-medium rounded-lg px-4 py-2 inline-block ${STATUS_COLORS[selectedOrder.status] || "bg-gray-100 text-gray-600"}`}>
+                    {selectedOrder.status}
+                  </span>
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    Status is set automatically from payment (Razorpay verify/webhook).
+                  </p>
                 </div>
               </div>
 
-              {/* Edit Shipping Details */}
+              {/* Customer contact (delivery = email for digital) */}
               <div>
-                <h3 className="text-sm font-semibold mb-3">Shipping Details</h3>
+                <h3 className="text-sm font-semibold mb-3">Customer contact</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Name</label>
@@ -358,18 +312,13 @@ export default function AdminOrdersPage() {
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Email</label>
+                    <label className="block text-xs text-gray-500 mb-1">Email (download links are sent here)</label>
                     <input type="email" value={editForm.shippingEmail} onChange={(e) => setEditForm({ ...editForm, shippingEmail: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Phone</label>
                     <input type="text" value={editForm.shippingPhone} onChange={(e) => setEditForm({ ...editForm, shippingPhone: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Address</label>
-                    <textarea value={editForm.shippingAddr} onChange={(e) => setEditForm({ ...editForm, shippingAddr: e.target.value })} rows={2}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
                   </div>
                   <button

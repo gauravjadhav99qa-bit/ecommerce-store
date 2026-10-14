@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E5F4F1"/>
+      <stop offset="100%" stop-color="#8FCFC2"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" fill="url(#g)"/>
+  <rect x="16" y="16" width="368" height="468" fill="none" stroke="#2F8A7A" stroke-width="3" rx="18" opacity="0.55"/>
+  <rect x="100" y="36" width="200" height="210" rx="14" fill="#FFFFFF" stroke="#2F8A7A" stroke-width="2.5"/>
+  <g transform="translate(200 145) scale(0.22) translate(-400 -500)" stroke-linecap="round" stroke-linejoin="round"><circle cx="400" cy="380" r="80" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="400" cy="240" r="70" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="400" cy="520" r="70" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="260" cy="380" r="70" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="540" cy="380" r="70" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="300" cy="280" r="65" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="500" cy="280" r="65" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="300" cy="480" r="65" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="500" cy="480" r="65" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="400" cy="380" r="40" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="385" cy="365" r="10" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0"/>
+  <circle cx="415" cy="365" r="10" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0"/>
+  <path d="M 380 400 Q 400 420 420 400" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="400" y1="590" x2="400" y2="880" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 400 700 Q 280 640 250 700 Q 280 760 400 720" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 400 780 Q 520 720 550 780 Q 520 840 400 800" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="180" r="30" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="650" cy="180" r="30" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="120" cy="700" r="24" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="680" cy="700" r="24" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <text x="400" y="960" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#1a1a1a">Colour me in!</text>
+</g>
+  <text x="200" y="327" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#2B2118">Easy Mandalas for</text>
+  <text x="200" y="361" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#2B2118">Beginners</text>
+  <text x="200" y="418" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#5A4A3A">Mandala Colouring Pages</text>
+  <rect x="120" y="436" width="160" height="30" rx="15" fill="#2F8A7A"/>
+  <text x="200" y="456" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">INSTANT DOWNLOAD</text>
+  <text x="200" y="486" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#2B2118">GT Shopping</text>
+</svg>

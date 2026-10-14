@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF3D6"/>
+      <stop offset="100%" stop-color="#F0C86A"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" fill="url(#g)"/>
+  <rect x="16" y="16" width="368" height="468" fill="none" stroke="#C98A1F" stroke-width="3" rx="18" opacity="0.55"/>
+  <rect x="100" y="36" width="200" height="210" rx="14" fill="#FFFFFF" stroke="#C98A1F" stroke-width="2.5"/>
+  <g transform="translate(200 145) scale(0.22) translate(-400 -500)" stroke-linecap="round" stroke-linejoin="round"><path d="M 120 500 Q 120 420 200 420 L 260 420 Q 300 320 400 320 Q 500 320 540 420 L 620 420 Q 700 420 700 500 L 700 580 Q 700 620 660 620 L 160 620 Q 120 620 120 580 Z" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 280 420 Q 310 350 400 350 Q 490 350 520 420 Z" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="400" y1="350" x2="400" y2="420" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="240" cy="640" r="70" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="240" cy="640" r="40" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="560" cy="640" r="70" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="560" cy="640" r="40" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="170" cy="520" r="24" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <circle cx="650" cy="520" r="24" fill="none" stroke="#1a1a1a" stroke-width="6"/>
+  <line x1="140" y1="560" x2="200" y2="560" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="620" y1="560" x2="680" y2="560" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round"/>
+  <text x="400" y="800" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#1a1a1a">Colour me in!</text>
+</g>
+  <text x="200" y="327" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#2B2118">Boho Mandalas</text>
+  <text x="200" y="361" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#2B2118">Printable Set</text>
+  <text x="200" y="418" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#5A4A3A">Mandala Colouring Pages</text>
+  <rect x="120" y="436" width="160" height="30" rx="15" fill="#C98A1F"/>
+  <text x="200" y="456" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">INSTANT DOWNLOAD</text>
+  <text x="200" y="486" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#2B2118">GT Shopping</text>
+</svg>

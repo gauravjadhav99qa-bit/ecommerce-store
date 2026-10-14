@@ -15,11 +15,11 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
 
   return (
     <div>
-      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+      <div className="aspect-square bg-cream rounded-lg overflow-hidden flex items-center justify-center">
         <img
           src={images[selected]}
           alt={name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
         />
       </div>
       {images.length > 1 && (
@@ -28,14 +28,14 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
             <button
               key={i}
               onClick={() => setSelected(i)}
-              className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${
-                selected === i ? "border-gray-900" : "border-transparent hover:border-gray-300"
+              className={`aspect-square bg-cream rounded-lg overflow-hidden border-2 transition-colors ${
+                selected === i ? "border-berry" : "border-transparent hover:border-cream-dark"
               }`}
             >
               <img
                 src={img}
                 alt={`${name} ${i + 1}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </button>
           ))}
