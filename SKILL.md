@@ -19,7 +19,7 @@ Digital-only. Every product is a PDF (or ZIP of PDFs) delivered instantly after 
 
 ## Tech Details
 - **Database**: PostgreSQL on Neon (`DATABASE_URL`). Workflow: `npx prisma db push` (NOT migrate — no migrations folder). Client output: `src/generated/prisma`
-- **Auth**: NextAuth v4 (JWT strategy, AES-256-GCM encrypted tokens via `next-auth/jwt` encode/decode). Email OTP login only (no phone OTP)
+- **Auth**: NextAuth v4 (JWT strategy, AES-256-GCM encrypted tokens via `next-auth/jwt` encode/decode). Customer login = email+password tab OR mobile-OTP tab at `/login`; signup requires mobile OTP (`phoneVerified` set)
 - **Payments**: Razorpay only. Server-computed amounts (paise). HMAC verify + webhook fallback
 - **File storage**: `src/lib/storage.ts` — Vercel Blob (private) in production; local filesystem `data/files/` fallback in dev when `BLOB_READ_WRITE_TOKEN` is unset
 - **Email**: Resend (`RESEND_API_KEY`), branded templates in `src/lib/email.ts`
@@ -27,7 +27,7 @@ Digital-only. Every product is a PDF (or ZIP of PDFs) delivered instantly after 
 - **OTP expiry**: 10 minutes
 
 ## Environment Variables (.env)
-See `.env.example`. Required: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `RAZORPAY_WEBHOOK_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`. Optional in dev: `BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ID` (local FS fallback otherwise).
+See `.env.example`. Required: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `RAZORPAY_WEBHOOK_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID_SIGNUP`/`MSG91_FLOW_ID_LOGIN`. Optional: `BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ID` (local FS fallback otherwise), `OTP_TEST_MODE` (dev testing only — code fixed to 123456).
 
 ## Database Models (Prisma — digital additions)
 | Model | Key Fields | Notes |
@@ -54,7 +54,10 @@ See `.env.example`. Required: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`,
 9. `src/lib/payments.ts markOrderPaid()` also sends the branded confirmation email with download CTA
 
 ### Auth
-- Email OTP: `/api/otp/email` → `/api/otp/verify` → existing user: `/api/auth/otp-login`; new: `/register?email=...` → `/api/register` → auto-login
+- Password: `/login` → `signIn("credentials")` → full page reload to callbackUrl
+- Mobile OTP: `POST /api/otp/send` {phone, purpose} → `POST /api/auth/otp-login` {phone, code} → session cookies
+- Signup: `/register` → Send OTP (purpose `signup`) → `POST /api/register` with `otp` → verifies + sets `phoneVerified` → redirect `/login`
+- OTP verify = server-side against `otps` table (10-min expiry, single-use). `OTP_TEST_MODE=true` → fixed code `123456`, no SMS — never in production
 - Admin: `/admin/login` → `/api/auth/admin-login` (bcrypt + ADMIN role)
 - Tokens: `next-auth/jwt` `encode()` (AES-256-GCM). Middleware decrypts via `jose.jwtDecrypt` + `@panva/hkdf` (Edge-compatible)
 - Session persists 10 years; full page reload (`window.location.href`) after login, never `router.push`

@@ -5,21 +5,36 @@ import { encode } from "next-auth/jwt";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, code } = await req.json();
+    const { phone, email, code } = await req.json();
 
-    if (!phone || !/^[6-9]\d{9}$/.test(String(phone))) {
+    const identifier = email ? String(email).trim() : String(phone || "").trim();
+
+    if (email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+        return NextResponse.json({ error: "Enter a valid email address" }, { status: 400 });
+      }
+    } else if (!identifier || !/^[6-9]\d{9}$/.test(identifier)) {
       return NextResponse.json({ error: "Enter a valid 10-digit mobile number" }, { status: 400 });
     }
     if (!code) {
       return NextResponse.json({ error: "OTP code required" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { phone: String(phone) } });
+    const user = email
+      ? await prisma.user.findUnique({ where: { email: identifier } })
+      : await prisma.user.findUnique({ where: { phone: identifier } });
     if (!user) {
-      return NextResponse.json({ error: "No account with this number. Please sign up first." }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: email
+            ? "No account with this email. Please sign up first."
+            : "No account with this number. Please sign up first.",
+        },
+        { status: 404 }
+      );
     }
 
-    const valid = await verifyOtp(String(phone), String(code));
+    const valid = await verifyOtp(identifier, String(code));
     if (!valid) {
       return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
     }
