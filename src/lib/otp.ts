@@ -69,7 +69,15 @@ export async function createAndSendEmailOtp(
   }
 
   try {
-    await sendOtpEmail(email, code, purpose);
+    const result = await sendOtpEmail(email, code, purpose);
+    if (!result?.ok) {
+      console.error(
+        `[OTP] email send failed for ${email} (${purpose}):`,
+        result?.error ?? "unknown provider error"
+      );
+      return { sent: false, testMode: false };
+    }
+    console.log(`[OTP] email sent via ${result.provider} to ${email}`);
     return { sent: true, testMode: false };
   } catch (error) {
     console.error(`[OTP] email send failed for ${email} (${purpose}):`, error);

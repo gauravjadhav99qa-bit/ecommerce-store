@@ -32,6 +32,7 @@ export async function sendSmsOtp(
       const data: any = await res.json().catch(() => ({}));
       // MSG91 returns type: "success" on acceptance
       const ok = res.ok && (data?.type === "success" || data?.status === "success");
+      console.log(`[SMS] MSG91 response for ${phone}:`, JSON.stringify(data));
       if (!ok) console.error("[SMS] MSG91 rejected:", JSON.stringify(data));
       return ok;
     } catch (error) {
