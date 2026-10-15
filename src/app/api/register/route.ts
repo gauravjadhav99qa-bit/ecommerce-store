@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyOtp } from "@/lib/otp";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, phone, email, password } = await req.json();
+    const { name, phone, email, password, otp } = await req.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -32,6 +33,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Phone number already registered" }, { status: 400 });
     }
 
+    if (!otp) {
+      return NextResponse.json({ error: "OTP verification is required" }, { status: 400 });
+    }
+    const otpValid = await verifyOtp(phone, String(otp));
+    if (!otpValid) {
+      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -40,6 +49,7 @@ export async function POST(req: NextRequest) {
         email,
         phone,
         password: hashedPassword,
+        phoneVerified: new Date(),
       },
       select: { id: true, name: true, phone: true, email: true },
     });
