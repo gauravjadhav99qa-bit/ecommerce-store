@@ -1,290 +1,200 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
-import { User, Smartphone } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { Loader2, ArrowRight, ShieldCheck, AlertTriangle } from "lucide-react";
+import Logo from "@/components/Logo";
 
-function RegisterForm() {
-  const router = useRouter();
+function SignupForm() {
   const searchParams = useSearchParams();
+  const ticket = searchParams.get("ticket") || "";
+  const identifier = searchParams.get("identifier") || "";
+  const channel = searchParams.get("channel") === "email" ? "email" : "phone";
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState(channel === "email" ? identifier : "");
+  const [phone, setPhone] = useState(channel === "phone" ? identifier : "");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const inputCls =
+    "w-full bg-cream border border-cream-dark rounded-xl px-4 py-3 min-h-[48px] text-[15px] text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-berry focus:border-berry transition-shadow disabled:text-ink-soft disabled:cursor-not-allowed";
+  const labelCls = "block text-[13px] font-semibold text-ink mb-1.5";
 
-  const [otpCode, setOtpCode] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpTestMode, setOtpTestMode] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
-  const [otpSuccess, setOtpSuccess] = useState("");
-  const [resendIn, setResendIn] = useState(0);
-
-  useEffect(() => {
-    if (resendIn <= 0) return;
-    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendIn]);
-
-  // Changing the number invalidates the sent OTP.
-  useEffect(() => {
-    setOtpSent(false);
-    setOtpSuccess("");
-    setOtpCode("");
-  }, [phone]);
-
-  const sendOtp = async () => {
-    setError("");
-    setOtpSuccess("");
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      setError("Enter a valid 10-digit mobile number first");
-      return;
-    }
-    setSendingOtp(true);
-    try {
-      const res = await fetch("/api/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, purpose: "signup" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Could not send OTP");
-        return;
-      }
-      setOtpSent(true);
-      setOtpTestMode(Boolean(data.testMode));
-      setOtpSuccess(`OTP sent to +91 ${phone} (valid 10 min)`);
-      setResendIn(45);
-    } catch {
-      setError("Could not send OTP. Please try again.");
-    } finally {
-      setSendingOtp(false);
-    }
-  };
-
-  const handleCreateAccount = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
-    if (!name.trim()) {
-      setError("Enter your name");
-      setLoading(false);
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Enter a valid email address");
-      setLoading(false);
-      return;
-    }
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      setError("Enter a valid 10-digit mobile number");
-      setLoading(false);
-      return;
-    }
-    if (!otpSent || otpCode.length !== 6) {
-      setError("Verify your mobile number with the OTP");
-      setLoading(false);
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      setLoading(false);
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
+    if (!firstName.trim()) return setError("First name is required");
+    if (!lastName.trim()) return setError("Last name is required");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Valid email is required");
+    if (!/^[6-9]\d{9}$/.test(phone)) return setError("Valid 10-digit mobile number is required");
 
+    setSaving(true);
     try {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email, phone, password, otp: otpCode }),
+        body: JSON.stringify({ ticket, firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), phone }),
       });
       const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error || "Failed to create account");
-        setLoading(false);
+        setError(data.error || "Could not save your details");
+        setSaving(false);
         return;
       }
-
-      router.push(`/login${callbackUrl !== "/" ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`);
+      window.location.href = callbackUrl;
     } catch {
-      setError("Something went wrong");
-    } finally {
-      setLoading(false);
+      setError("Something went wrong. Please try again.");
+      setSaving(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <h1 className="text-xl sm:text-2xl font-bold text-center mb-2">Create Account</h1>
-      <p className="text-center text-gray-500 text-xs sm:text-sm mb-6 sm:mb-8">
-        Join GT Shopping today
-      </p>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm">
-          {error}
-        </div>
-      )}
-      {otpSuccess && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm">
-          {otpSuccess}
-          {otpTestMode && <span className="block text-xs mt-1">Test mode — OTP is 123456</span>}
-        </div>
-      )}
-
-      <form onSubmit={handleCreateAccount} className="space-y-3 sm:space-y-4">
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-            Full Name *
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            placeholder="Enter your name"
-            autoComplete="name"
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-            Email Address *
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            placeholder="you@example.com"
-            autoComplete="email"
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-            Mobile Number *
-          </label>
-          <div className="flex">
-            <span className="flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-600">
-              +91
-            </span>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              required
-              placeholder="9876543210"
-              maxLength={10}
-              autoComplete="tel-national"
-              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
-            />
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 sm:py-12">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-3xl border border-cream-dark shadow-[0_20px_60px_-25px_rgba(43,33,24,0.3)] overflow-hidden">
+          <div className="px-6 sm:px-8 pt-7 pb-5 text-center border-b border-cream-dark">
+            <div className="flex justify-center">
+              <Logo size="default" />
+            </div>
+            <h1 className="font-display text-2xl font-semibold text-ink mt-3.5">Create your account</h1>
+            <p className="text-sm text-ink-soft mt-1">
+              {channel === "email"
+                ? "Email verified — just your details left"
+                : "Mobile verified — just your details left"}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={sendOtp}
-            disabled={sendingOtp || resendIn > 0 || phone.length !== 10}
-            className="w-full mt-2 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2"
-          >
-            <Smartphone size={15} />
-            {sendingOtp ? "Sending..." : resendIn > 0 ? `Resend OTP in ${resendIn}s` : otpSent ? "Resend OTP" : "Send OTP to verify number"}
-          </button>
+
+          <div className="px-6 sm:px-8 py-6">
+            {!ticket && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  Your sign-in session expired. Please start again from the sign-in page.{" "}
+                  <Link href="/login" className="font-semibold text-berry hover:underline">
+                    Go to sign in →
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSave} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className={labelCls}>First Name *</label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    autoFocus
+                    autoComplete="given-name"
+                    placeholder="Aarav"
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Last Name *</label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    autoComplete="family-name"
+                    placeholder="Sharma"
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  Email Address *
+                  {channel === "email" && <span className="text-sage font-medium"> · verified</span>}
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  readOnly={channel === "email"}
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  Mobile Number *
+                  {channel === "phone" && <span className="text-sage font-medium"> · verified</span>}
+                </label>
+                <div className="flex">
+                  <span className="flex items-center px-3.5 bg-cream border border-r-0 border-cream-dark rounded-l-xl text-sm font-medium text-ink-soft">
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    required
+                    readOnly={channel === "phone"}
+                    autoComplete="tel-national"
+                    placeholder="9876543210"
+                    maxLength={10}
+                    className={`${inputCls} rounded-l-none`}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving || !ticket}
+                className="w-full bg-berry text-white rounded-full font-semibold py-3.5 min-h-[50px] text-[15px] hover:bg-berry-dark disabled:opacity-50 shadow-lg shadow-berry/20 transition-colors flex items-center justify-center gap-2 mt-1"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    Save & Continue
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+
+              <p className="text-[11px] text-ink-soft text-center leading-relaxed">
+                Your details are used for order receipts and downloads only
+              </p>
+            </form>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-            OTP Code *
-          </label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            required
-            placeholder="6-digit code"
-            autoComplete="one-time-code"
-            maxLength={6}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base tracking-widest"
-          />
-          {!otpSent && (
-            <p className="text-[11px] text-gray-400 mt-1">Tap &quot;Send OTP&quot; after entering your number</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-            Password *
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            placeholder="At least 6 characters"
-            autoComplete="new-password"
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-            Confirm Password *
-          </label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            placeholder="Re-enter password"
-            autoComplete="new-password"
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[44px] text-sm sm:text-base"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading || !name.trim() || !email || !phone || !otpSent || otpCode.length !== 6 || !password || !confirmPassword}
-          className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-[44px] text-sm sm:text-base font-medium flex items-center justify-center gap-2"
-        >
-          <User className="w-4 h-4" />
-          {loading ? "Creating account..." : "Create Account"}
-        </button>
-      </form>
-
-      <p className="text-center text-xs sm:text-sm text-gray-500 mt-4 sm:mt-6">
-        Already have an account?{" "}
-        <Link
-          href={`/login${callbackUrl !== "/" ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`}
-          className="text-blue-600 font-medium hover:underline"
-        >
-          Sign in
-        </Link>
-      </p>
+        <p className="flex items-center justify-center gap-1.5 text-xs text-ink-soft mt-4">
+          <ShieldCheck size={14} className="text-sage" />
+          Secure sign-in · Instant PDF delivery after payment
+        </p>
+      </div>
     </div>
   );
 }
 
-export default function RegisterPage() {
+export default function SignupPage() {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
-      <Suspense fallback={<div className="text-center py-8 text-gray-500">Loading...</div>}>
-        <RegisterForm />
-      </Suspense>
-    </div>
+    <Suspense fallback={<div className="min-h-[80vh] flex items-center justify-center text-ink-soft">Loading...</div>}>
+      <SignupForm />
+    </Suspense>
   );
 }

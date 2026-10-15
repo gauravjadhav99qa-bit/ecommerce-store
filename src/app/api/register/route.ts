@@ -1,60 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyOtp } from "@/lib/otp";
-import bcrypt from "bcryptjs";
+import { readSignupTicket, createLoginResponse } from "@/lib/auth-login";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, phone, email, password, otp } = await req.json();
+    const { ticket, firstName, lastName, email, phone } = await req.json();
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
+    const first = String(firstName || "").trim();
+    const last = String(lastName || "").trim();
+    const mail = String(email || "").trim();
+    const mobile = String(phone || "").trim();
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!first) return NextResponse.json({ error: "First name is required" }, { status: 400 });
+    if (!last) return NextResponse.json({ error: "Last name is required" }, { status: 400 });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
     }
-
-    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
       return NextResponse.json({ error: "Valid 10-digit mobile number required" }, { status: 400 });
     }
 
-    if (!password || password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    // The OTP-verified identifier from the sign-in screen must be preserved.
+    const claim = await readSignupTicket(ticket);
+    if (!claim) {
+      return NextResponse.json({ error: "Sign-in session expired. Please start again." }, { status: 401 });
+    }
+    if (claim.channel === "phone" && mobile !== claim.identifier) {
+      return NextResponse.json({ error: "Keep the verified mobile number unchanged" }, { status: 400 });
+    }
+    if (claim.channel === "email" && mail !== claim.identifier) {
+      return NextResponse.json({ error: "Keep the verified email unchanged" }, { status: 400 });
     }
 
-    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    const existingEmail = await prisma.user.findUnique({ where: { email: mail } });
     if (existingEmail) {
-      return NextResponse.json({ error: "Email already registered" }, { status: 400 });
+      return NextResponse.json({ error: "This email is already registered — please sign in with it." }, { status: 400 });
     }
-
-    const existingPhone = await prisma.user.findUnique({ where: { phone } });
+    const existingPhone = await prisma.user.findUnique({ where: { phone: mobile } });
     if (existingPhone) {
-      return NextResponse.json({ error: "Phone number already registered" }, { status: 400 });
+      return NextResponse.json({ error: "This mobile number is already registered — please sign in with it." }, { status: 400 });
     }
 
-    if (!otp) {
-      return NextResponse.json({ error: "OTP verification is required" }, { status: 400 });
-    }
-    const otpValid = await verifyOtp(phone, String(otp));
-    if (!otpValid) {
-      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    const now = new Date();
     const user = await prisma.user.create({
       data: {
-        name: name.trim(),
-        email,
-        phone,
-        password: hashedPassword,
-        phoneVerified: new Date(),
+        name: `${first} ${last}`.trim(),
+        firstName: first,
+        lastName: last,
+        email: mail,
+        phone: mobile,
+        emailVerified: claim.channel === "email" ? now : null,
+        phoneVerified: claim.channel === "phone" ? now : null,
       },
-      select: { id: true, name: true, phone: true, email: true },
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        email: true,
+        role: true,
+        gender: true,
+        dob: true,
+        image: true,
+        emailVerified: true,
+        phoneVerified: true,
+      },
     });
 
-    return NextResponse.json({ user });
+    // Auto-login straight after signup.
+    return createLoginResponse(user);
   } catch (err) {
     console.error("[REGISTER]", err);
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
