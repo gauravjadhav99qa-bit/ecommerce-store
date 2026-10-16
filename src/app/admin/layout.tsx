@@ -49,7 +49,8 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen">
-      {/* Mobile overlay + slide-in drawer (rendered outside any backdrop-blur container so position:fixed works) */}
+      {/* Mobile overlay + slide-in drawer. Mounted only while open so the
+          off-screen translated layer can't ghost/mispaint after pinch-zoom. */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-[70] lg:hidden"
@@ -57,14 +58,12 @@ export default function AdminLayout({
           aria-hidden="true"
         />
       )}
-      <div
-        role="dialog"
-        aria-label="Admin menu"
-        aria-hidden={!mobileMenuOpen}
-        className={`fixed inset-y-0 left-0 w-[85%] max-w-xs bg-white z-[80] lg:hidden transition-transform duration-200 ease-in-out shadow-2xl ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
+      {mobileMenuOpen && (
+        <div
+          role="dialog"
+          aria-label="Admin menu"
+          className="fixed inset-y-0 left-0 w-[85%] max-w-xs bg-white z-[80] lg:hidden shadow-2xl animate-slide-in-left"
+        >
         <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100">
           <h2 className="text-base font-bold">Admin Panel</h2>
           <button
@@ -102,9 +101,12 @@ export default function AdminLayout({
           </button>
         </nav>
       </div>
+      )}
 
-      {/* Mobile top bar */}
-      <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-2 sticky top-0 z-50">
+      {/* Mobile top bar. Fixed with left/right insets so it always paints at
+          full viewport width — sticky headers misrender at partial width after
+          pinch-zoom on Android Chrome. */}
+      <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-2 fixed top-0 left-0 right-0 z-50">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold">Admin Panel</h2>
           <button
@@ -117,7 +119,8 @@ export default function AdminLayout({
         </div>
       </div>
 
-      <div className="flex min-h-screen">
+      {/* pt on mobile compensates for the fixed top bar (44px button + 16px padding + 1px border). */}
+      <div className="flex min-h-screen pt-[61px] lg:pt-0">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:block w-64 bg-gray-50 border-r border-gray-200 p-4 flex flex-col">
           <h2 className="text-lg font-bold mb-6 px-3">Admin Panel</h2>

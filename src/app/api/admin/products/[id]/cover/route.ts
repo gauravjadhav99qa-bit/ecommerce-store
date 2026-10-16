@@ -106,13 +106,15 @@ export async function DELETE(
     if (url.startsWith("/products/covers/")) {
       const { deleteCoverImage } = await import("@/lib/storage");
       await deleteCoverImage(url.slice(1));
-    } else if (url.includes("blob.vercel-storage.com")) {
-      // Private-store cover: stored as a signed URL — derive the pathname
-      // from it and remove the blob (best effort).
+    } else if (url.startsWith("/api/blob-cover?path=")) {
+      // Private-store cover: stored as a stable proxy URL — derive the blob
+      // pathname from it and remove the blob (best effort).
       try {
-        const { del } = await import("@vercel/blob");
-        const pathname = new URL(url).pathname.replace(/^\/+/, "");
-        if (pathname.startsWith("covers/")) await del(pathname);
+        const pathname = decodeURIComponent(url.split("?path=")[1] || "");
+        if (pathname.startsWith("covers/")) {
+          const { del } = await import("@vercel/blob");
+          await del(pathname);
+        }
       } catch {
         // best effort
       }

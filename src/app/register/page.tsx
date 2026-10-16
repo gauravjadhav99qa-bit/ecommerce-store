@@ -10,13 +10,11 @@ function SignupForm() {
   const searchParams = useSearchParams();
   const ticket = searchParams.get("ticket") || "";
   const identifier = searchParams.get("identifier") || "";
-  const channel = searchParams.get("channel") === "email" ? "email" : "phone";
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState(channel === "email" ? identifier : "");
-  const [phone, setPhone] = useState(channel === "phone" ? identifier : "");
+  const [email, setEmail] = useState(identifier);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -31,14 +29,13 @@ function SignupForm() {
     if (!firstName.trim()) return setError("First name is required");
     if (!lastName.trim()) return setError("Last name is required");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Valid email is required");
-    if (!/^[6-9]\d{9}$/.test(phone)) return setError("Valid 10-digit mobile number is required");
 
     setSaving(true);
     try {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticket, firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), phone }),
+        body: JSON.stringify({ ticket, firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -62,11 +59,7 @@ function SignupForm() {
               <Logo size="default" />
             </div>
             <h1 className="font-display text-2xl font-semibold text-ink mt-3.5">Create your account</h1>
-            <p className="text-sm text-ink-soft mt-1">
-              {channel === "email"
-                ? "Email verified — just your details left"
-                : "Mobile verified — just your details left"}
-            </p>
+            <p className="text-sm text-ink-soft mt-1">Email verified — just your details left</p>
           </div>
 
           <div className="px-6 sm:px-8 py-6">
@@ -119,42 +112,18 @@ function SignupForm() {
 
               <div>
                 <label className={labelCls}>
-                  Email Address *
-                  {channel === "email" && <span className="text-sage font-medium"> · verified</span>}
+                  Email Address *<span className="text-sage font-medium"> · verified</span>
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  readOnly={channel === "email"}
+                  readOnly={Boolean(identifier)}
                   autoComplete="email"
                   placeholder="you@example.com"
                   className={inputCls}
                 />
-              </div>
-
-              <div>
-                <label className={labelCls}>
-                  Mobile Number *
-                  {channel === "phone" && <span className="text-sage font-medium"> · verified</span>}
-                </label>
-                <div className="flex">
-                  <span className="flex items-center px-3.5 bg-cream border border-r-0 border-cream-dark rounded-l-xl text-sm font-medium text-ink-soft">
-                    +91
-                  </span>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    required
-                    readOnly={channel === "phone"}
-                    autoComplete="tel-national"
-                    placeholder="9876543210"
-                    maxLength={10}
-                    className={`${inputCls} rounded-l-none`}
-                  />
-                </div>
               </div>
 
               <button

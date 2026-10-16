@@ -2,22 +2,11 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
-import { AlertTriangle, ShieldCheck, ArrowRight, ArrowLeft, Mail, Smartphone, Loader2 } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowRight, ArrowLeft, Mail, Loader2 } from "lucide-react";
 import Logo from "@/components/Logo";
 
-type Channel = "email" | "phone";
-
-function detectIdentifier(raw: string): { channel: Channel; value: string } | null {
-  const s = raw.trim();
-  if (!s) return null;
-  if (s.includes("@")) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? { channel: "email", value: s } : null;
-  }
-  let digits = s.replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
-  else if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
-  if (digits.length === 10 && /^[6-9]/.test(digits)) return { channel: "phone", value: digits };
-  return null;
+function isEmail(raw: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.trim());
 }
 
 function LoginForm() {
@@ -25,8 +14,7 @@ function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const [step, setStep] = useState<"identifier" | "otp">("identifier");
-  const [raw, setRaw] = useState("");
-  const [target, setTarget] = useState<{ channel: Channel; value: string } | null>(null);
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -43,26 +31,23 @@ function LoginForm() {
     return () => clearTimeout(t);
   }, [resendIn]);
 
-  const sendOtp = async (id: { channel: Channel; value: string }) => {
+  const sendOtp = async (addr: string) => {
     setError("");
     setNotice("");
     setSending(true);
     try {
-      const res = await fetch(id.channel === "email" ? "/api/otp/email" : "/api/otp/send", {
+      const res = await fetch("/api/otp/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: id.channel === "email" ? id.value : undefined, phone: id.channel === "phone" ? id.value : undefined, purpose: "login" }),
+        body: JSON.stringify({ email: addr, purpose: "login" }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Could not send OTP. Please try again.");
         return;
       }
-      setTarget(id);
       setTestMode(Boolean(data.testMode));
-      setNotice(
-        id.channel === "email" ? `Code sent to ${id.value}` : `Code sent to +91 ${id.value}`
-      );
+      setNotice(`Code sent to ${addr}`);
       setStep("otp");
       setCode("");
       setResendIn(45);
@@ -75,31 +60,27 @@ function LoginForm() {
 
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = detectIdentifier(raw);
-    if (!id) {
-      setError("Enter a valid email address or 10-digit mobile number");
+    if (!isEmail(email)) {
+      setError("Enter a valid email address");
       return;
     }
-    await sendOtp(id);
+    await sendOtp(email.trim());
   };
 
   const handleResend = async () => {
-    if (target && resendIn === 0) await sendOtp(target);
+    if (email && resendIn === 0) await sendOtp(email.trim());
   };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!target || code.length !== 6) return;
+    if (code.length !== 6) return;
     setVerifying(true);
     setError("");
     try {
       const res = await fetch("/api/auth/otp-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          [target.channel === "email" ? "email" : "phone"]: target.value,
-          code,
-        }),
+        body: JSON.stringify({ email: email.trim(), code }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -154,12 +135,8 @@ function LoginForm() {
             </h1>
             <p className="text-sm text-ink-soft mt-1">
               {step === "identifier"
-                ? "One tap — email or mobile is all you need"
-                : target?.channel === "email"
-                  ? `We emailed a 6-digit code to ${target.value}`
-                  : target
-                    ? `We texted a 6-digit code to +91 ${target.value}`
-                    : ""}
+                ? "One tap — your email is all you need"
+                : `We emailed a 6-digit code to ${email}`}
             </p>
           </div>
 
@@ -174,20 +151,20 @@ function LoginForm() {
               <form onSubmit={handleContinue} className="space-y-4">
                 <div>
                   <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                    Email or mobile number
+                    Email address
                   </label>
                   <input
-                    type="text"
-                    value={raw}
-                    onChange={(e) => setRaw(e.target.value)}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                     autoFocus
-                    placeholder="you@example.com or 9876543210"
-                    autoComplete="username"
+                    placeholder="you@example.com"
+                    autoComplete="email"
                     className={inputCls}
                   />
                 </div>
-                <button type="submit" disabled={sending || !raw.trim()} className={primaryBtn}>
+                <button type="submit" disabled={sending || !email.trim()} className={primaryBtn}>
                   {sending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -208,7 +185,7 @@ function LoginForm() {
               <form onSubmit={handleVerify} className="space-y-4">
                 {notice && (
                   <div className="bg-sage/10 border border-sage/30 text-ink px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                    {target?.channel === "email" ? <Mail size={15} /> : <Smartphone size={15} />}
+                    <Mail size={15} />
                     <span>
                       {notice}
                       {testMode && <span className="block text-xs text-ink-soft mt-0.5">Test mode — code is 123456</span>}
@@ -258,7 +235,7 @@ function LoginForm() {
                     className="flex items-center gap-1 text-ink-soft hover:text-ink font-medium"
                   >
                     <ArrowLeft size={14} />
-                    Change {target?.channel === "email" ? "email" : "number"}
+                    Change email
                   </button>
                   <button
                     type="button"

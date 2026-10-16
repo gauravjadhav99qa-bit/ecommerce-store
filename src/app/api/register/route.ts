@@ -16,7 +16,9 @@ export async function POST(req: NextRequest) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
     }
-    if (!/^[6-9]\d{9}$/.test(mobile)) {
+    // Mobile number is optional (email-OTP-only sign-in). When provided it
+    // must still be a valid 10-digit Indian number.
+    if (mobile && !/^[6-9]\d{9}$/.test(mobile)) {
       return NextResponse.json({ error: "Valid 10-digit mobile number required" }, { status: 400 });
     }
 
@@ -36,9 +38,11 @@ export async function POST(req: NextRequest) {
     if (existingEmail) {
       return NextResponse.json({ error: "This email is already registered — please sign in with it." }, { status: 400 });
     }
-    const existingPhone = await prisma.user.findUnique({ where: { phone: mobile } });
-    if (existingPhone) {
-      return NextResponse.json({ error: "This mobile number is already registered — please sign in with it." }, { status: 400 });
+    if (mobile) {
+      const existingPhone = await prisma.user.findUnique({ where: { phone: mobile } });
+      if (existingPhone) {
+        return NextResponse.json({ error: "This mobile number is already registered — please sign in with it." }, { status: 400 });
+      }
     }
 
     const now = new Date();
@@ -48,7 +52,9 @@ export async function POST(req: NextRequest) {
         firstName: first,
         lastName: last,
         email: mail,
-        phone: mobile,
+        // Store null (not "") when omitted so the unique constraint allows
+        // multiple phone-less accounts.
+        phone: mobile || null,
         emailVerified: claim.channel === "email" ? now : null,
         phoneVerified: claim.channel === "phone" ? now : null,
       },

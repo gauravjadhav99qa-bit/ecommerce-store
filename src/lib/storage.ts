@@ -85,27 +85,18 @@ export async function putCoverImage(opts: {
 
   if (getStorageMode() === "blob") {
     const storagePath = `covers/${opts.productId}/${fileName}`;
-    // The connected Blob store is PRIVATE, so the cover is stored privately
-    // and surfaced via a long-lived signed URL that can be dropped straight
-    // into an <img src> (the images list stores plain URLs).
+    // The connected Blob store is PRIVATE. Vercel Blob signed URLs expire in
+    // at most 7 days, so we can't persist one in the DB. Store a stable app
+    // URL instead — /api/blob-cover re-signs on demand and redirects.
     await put(storagePath, opts.data, {
       access: "private",
       contentType: opts.mimeType,
       allowOverwrite: false,
     });
-    const validUntil = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000;
-    const token = await issueSignedToken({
-      pathname: storagePath,
-      operations: ["get"],
-      validUntil,
-    });
-    const { presignedUrl } = await presignUrl(token, {
-      pathname: storagePath,
-      operation: "get",
-      access: "private",
-      validUntil,
-    });
-    return { url: presignedUrl, storagePath };
+    return {
+      url: `/api/blob-cover?path=${encodeURIComponent(storagePath)}`,
+      storagePath,
+    };
   }
 
   // Local: write under public/ so Next serves it at /products/covers/...
@@ -198,7 +189,11 @@ export async function getCoverImageUrl(
   storagePath: string,
   ttlMs = 60 * 60 * 1000
 ): Promise<string> {
-  if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+  if (
+    storagePath.startsWith("http://") ||
+    storagePath.startsWith("https://") ||
+    storagePath.startsWith("/api/blob-cover")
+  ) {
     return storagePath;
   }
   return issueProductDownload({ storagePath, ttlMs });
