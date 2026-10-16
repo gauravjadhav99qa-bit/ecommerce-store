@@ -25,7 +25,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
 
   if (total === 0) {
     return (
-      <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+      <div className="aspect-[2480/3508] bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
         No Image Available
       </div>
     );
@@ -49,7 +49,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
   return (
     <div>
       <div
-        className="relative aspect-square bg-cream rounded-lg overflow-hidden flex items-center justify-center touch-pan-y select-none"
+        className="relative aspect-[2480/3508] bg-cream rounded-lg overflow-hidden flex items-center justify-center touch-pan-y select-none"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -103,7 +103,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
               key={i}
               onClick={() => setSelected(i)}
               aria-label={`View image ${i + 1}`}
-              className={`snap-center shrink-0 w-16 h-16 sm:w-20 sm:h-20 bg-cream rounded-lg overflow-hidden border-2 transition-colors ${
+              className={`snap-center shrink-0 w-14 h-20 sm:w-16 sm:h-[90px] bg-cream rounded-lg overflow-hidden border-2 transition-colors ${
                 selected === i ? "border-berry" : "border-transparent hover:border-cream-dark"
               }`}
             >

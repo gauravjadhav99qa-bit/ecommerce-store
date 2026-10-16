@@ -50,7 +50,5 @@ data/files/
 *.log
 .env*
 
-# generated mandala artwork (regenerate with scripts/gen_mandalas.py)
-scripts/out_mandalas/
-
-scripts/out_kids/
+# downloaded provider artwork cache (printablecoloringpages.ai import)
+scripts/out_pcp/
