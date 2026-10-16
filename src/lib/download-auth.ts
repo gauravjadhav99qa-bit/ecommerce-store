@@ -43,3 +43,38 @@ export async function getFilesForProduct(productId: string) {
   }
   return product.files;
 }
+
+/**
+ * Collect the cover-image URLs for a product (for on-demand PDF generation).
+ * Bundles gather images from every contained product.
+ */
+export async function getImagesForProduct(productId: string): Promise<{ name: string; images: string[] }> {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      id: true,
+      name: true,
+      images: true,
+      productType: true,
+      bundleItems: {
+        select: { product: { select: { name: true, images: true } } },
+      },
+    },
+  });
+  if (!product) return { name: "", images: [] };
+
+  const parse = (raw: string): string[] => {
+    try {
+      const arr = JSON.parse(raw || "[]");
+      return Array.isArray(arr) ? arr.filter((u) => typeof u === "string" && u) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  if (product.productType === "BUNDLE") {
+    const images = product.bundleItems.flatMap((bi) => parse(bi.product.images));
+    return { name: product.name, images };
+  }
+  return { name: product.name, images: parse(product.images) };
+}

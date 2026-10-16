@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
-import { canAccessOrder, loadOrder, getFilesForProduct } from "@/lib/download-auth";
+import { canAccessOrder, loadOrder, getFilesForProduct, getImagesForProduct } from "@/lib/download-auth";
 import { issueProductDownload } from "@/lib/storage";
 import { prisma } from "@/lib/prisma";
 
@@ -43,6 +43,26 @@ export async function GET(
           url,
         });
       }
+
+      // Fallback: if the product has no stored PDF file but does have cover
+      // images, expose an on-demand generated PDF so the customer always gets
+      // the current artwork (never nothing).
+      if (withUrls.length === 0) {
+        const { images } = await getImagesForProduct(item.productId);
+        if (images.length > 0) {
+          const genUrl = `/api/downloads/${orderNumber}/${item.id}/generate${
+            token ? `?t=${encodeURIComponent(token)}` : ""
+          }`;
+          withUrls.push({
+            id: `gen-${item.id}`,
+            fileName: `${item.name}.pdf`,
+            sizeBytes: 0,
+            mimeType: "application/pdf",
+            url: genUrl,
+          });
+        }
+      }
+
       items.push({
         id: item.id,
         name: item.name,

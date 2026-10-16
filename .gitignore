@@ -52,3 +52,5 @@ data/files/
 
 # generated mandala artwork (regenerate with scripts/gen_mandalas.py)
 scripts/out_mandalas/
+
+scripts/out_kids/
