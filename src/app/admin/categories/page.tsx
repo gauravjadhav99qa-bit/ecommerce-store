@@ -16,6 +16,15 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  // Prevent background scroll while the modal is open (mobile).
+  useEffect(() => {
+    if (!showModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showModal]);
   const [form, setForm] = useState({ name: "", image: "" });
 
   const fetchCategories = async () => {
@@ -174,8 +183,8 @@ export default function AdminCategoriesPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-[60] p-2 sm:p-4 overflow-y-auto flex justify-center items-start sm:items-center">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90dvh] my-auto overflow-y-auto">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <h2 className="text-base sm:text-lg font-semibold">
                 {editingCategory ? "Edit Category" : "Add Category"}

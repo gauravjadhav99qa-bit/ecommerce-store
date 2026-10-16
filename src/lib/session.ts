@@ -48,11 +48,24 @@ async function decryptToken(token: string): Promise<SessionUser | null> {
 }
 
 export async function getSessionUser(req: NextRequest): Promise<SessionUser | null> {
-  const token =
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value;
+  // Prefer a valid ADMIN session so an admin who is ALSO signed in as a
+  // customer (both cookies in one browser) is not locked out of admin APIs.
+  // The legacy `__Secure-next-auth.session-token` duplicate is intentionally
+  // ignored — it survived signout and kept stale sessions alive.
+  const adminToken = req.cookies.get("admin-token")?.value;
+  if (adminToken) {
+    const adminUser = await decryptToken(adminToken);
+    if (adminUser?.role === "ADMIN") return adminUser;
+  }
+  const token = req.cookies.get("next-auth.session-token")?.value;
   if (!token) return null;
-  return decryptToken(token);
+  const user = await decryptToken(token);
+  if (!user) return null;
+  // Storefront cookies never grant admin power. Legacy cookies issued before
+  // the cookie split may still say ADMIN — downgrade them; real admin access
+  // only ever comes from the `admin-token` branch above.
+  if (user.role === "ADMIN") return { ...user, role: "CUSTOMER" };
+  return user;
 }
 
 /** Optional check for email/mobile verification. Not required for payment. */

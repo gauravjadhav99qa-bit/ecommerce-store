@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Package, ShoppingCart, Users, FolderOpen, Menu, X, Tag, Settings } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, FolderOpen, Menu, X, Tag, Settings, LogOut } from "lucide-react";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -22,6 +22,15 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/admin-logout", { method: "POST" });
+    } catch {
+      // ignore — still redirect
+    }
+    window.location.href = "/admin/login";
+  };
 
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? "hidden" : "unset";
@@ -84,6 +93,13 @@ export default function AdminLayout({
               </Link>
             );
           })}
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors min-h-[44px]"
+          >
+            <LogOut size={18} />
+            <span className="flex-1 text-left">Sign Out</span>
+          </button>
         </nav>
       </div>
 
@@ -123,6 +139,13 @@ export default function AdminLayout({
               );
             })}
           </nav>
+          <button
+            onClick={handleSignOut}
+            className="mt-4 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut size={18} />
+            <span className="flex-1 text-left">Sign Out</span>
+          </button>
         </aside>
 
         {/* Main Content */}

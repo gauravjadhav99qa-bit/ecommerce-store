@@ -4,7 +4,9 @@ import { getSessionUser } from "@/lib/session";
 import { putCoverImage, ALLOWED_COVER_MIME_TYPES } from "@/lib/storage";
 import { parseImages } from "@/lib/utils";
 
-const MAX_COVER_SIZE = 5 * 1024 * 1024; // 5MB
+// Vercel serverless functions reject request bodies above ~4.5MB, so keep the
+// cover limit safely under that to avoid an opaque 413 error.
+const MAX_COVER_SIZE = 4 * 1024 * 1024; // 4MB
 
 async function requireAdmin(req: NextRequest) {
   const session = await getSessionUser(req);
@@ -37,7 +39,7 @@ export async function POST(
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
     if (file.size > MAX_COVER_SIZE) {
-      return NextResponse.json({ error: "Image too large (max 5MB)" }, { status: 400 });
+      return NextResponse.json({ error: "Image too large (max 4MB)" }, { status: 400 });
     }
     const mimeType = file.type || "image/png";
     if (!(ALLOWED_COVER_MIME_TYPES as readonly string[]).includes(mimeType)) {
@@ -100,10 +102,20 @@ export async function DELETE(
       include: { files: true },
     });
 
-    // Best-effort cleanup of local uploaded cover files.
+    // Best-effort cleanup of the stored file.
     if (url.startsWith("/products/covers/")) {
       const { deleteCoverImage } = await import("@/lib/storage");
       await deleteCoverImage(url.slice(1));
+    } else if (url.includes("blob.vercel-storage.com")) {
+      // Private-store cover: stored as a signed URL — derive the pathname
+      // from it and remove the blob (best effort).
+      try {
+        const { del } = await import("@vercel/blob");
+        const pathname = new URL(url).pathname.replace(/^\/+/, "");
+        if (pathname.startsWith("covers/")) await del(pathname);
+      } catch {
+        // best effort
+      }
     }
 
     return NextResponse.json({ success: true, product: updated });

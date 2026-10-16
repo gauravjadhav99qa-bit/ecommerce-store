@@ -53,35 +53,62 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const token = request.cookies.get("next-auth.session-token")?.value || request.cookies.get("__Secure-next-auth.session-token")?.value;
+  // Customer and admin sessions are now separate cookies. Never fall back to
+  // the legacy `__Secure-next-auth.session-token` duplicate — it is what used
+  // to survive signout and dead-end the Sign In button.
+  const customerToken = request.cookies.get("next-auth.session-token")?.value;
+  const adminToken = request.cookies.get("admin-token")?.value;
+
+  const noStore = (res: NextResponse) => {
+    res.headers.set("Cache-Control", "no-store, max-age=0");
+    return res;
+  };
 
   // Allow admin login page without auth
   if (adminLoginRoutes.includes(pathname)) {
-    if (token) {
-      const payload = await decryptToken(token);
+    if (adminToken) {
+      const payload = await decryptToken(adminToken);
       if (payload?.role === "ADMIN") {
         return NextResponse.redirect(new URL("/admin", request.url));
       }
     }
-    return NextResponse.next();
+    return noStore(NextResponse.next());
   }
 
-  // Redirect logged-in users away from login/register (except admin)
-  if (authRoutes.includes(pathname) && token) {
-    return NextResponse.redirect(new URL("/", request.url));
+  // Redirect logged-in CUSTOMERS away from login/register. Only a VALID
+  // token counts — a stale or corrupted cookie must never dead-end the
+  // Sign In button. An admin who is only signed into the admin panel may
+  // still open the storefront login.
+  if (authRoutes.includes(pathname) && customerToken) {
+    const payload = await decryptToken(customerToken);
+    if (payload) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
   // Checkout is guest-friendly: auth is enforced server-side per order.
 
-  // Protect admin routes - require ADMIN role
+  // Protect admin routes - require the ADMIN session cookie
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
-    if (!token) {
+    if (!adminToken) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
-    const payload = await decryptToken(token);
+    const payload = await decryptToken(adminToken);
     if (payload?.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/account", request.url));
     }
+    return noStore(NextResponse.next());
+  }
+
+  // Auth-sensitive customer pages must never be cached, so login/logout
+  // always reflects the latest cookie state.
+  if (
+    pathname.startsWith("/account") ||
+    pathname === "/cart" ||
+    pathname === "/checkout" ||
+    pathname === "/wishlist"
+  ) {
+    return noStore(NextResponse.next());
   }
 
   return NextResponse.next();

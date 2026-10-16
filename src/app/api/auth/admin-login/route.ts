@@ -50,12 +50,23 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json({ success: true });
 
-    response.cookies.set("next-auth.session-token", token, {
+    // Admin sessions live in their OWN cookie so they never collide with the
+    // customer session (next-auth.session-token) in other tabs. The middleware
+    // only trusts `admin-token` for /admin routes.
+    response.cookies.set("admin-token", token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge,
+    });
+    // Clean up legacy duplicates so old browsers recover after this deploy.
+    response.cookies.set("__Secure-next-auth.session-token", "", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
     });
 
     return response;

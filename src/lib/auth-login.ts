@@ -19,13 +19,17 @@ interface LoginUser {
   phoneVerified: Date | null;
 }
 
-/** Builds the standard session response (both cookie variants) for a logged-in user. */
+/** Builds the standard session response for a logged-in storefront customer. */
 export async function createLoginResponse(user: LoginUser): Promise<NextResponse> {
   const token = await encode({
     token: {
       sub: user.id,
       id: user.id,
-      role: user.role,
+      // Storefront sessions are always customer-scoped. An ADMIN signing in
+      // through the customer OTP flow must NOT receive admin powers here —
+      // admin access is only issued by /api/auth/admin-login via the
+      // separate `admin-token` cookie. This prevents the two panels mixing.
+      role: "CUSTOMER",
       phone: user.phone,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -49,8 +53,15 @@ export async function createLoginResponse(user: LoginUser): Promise<NextResponse
     path: "/",
     maxAge: MAX_AGE,
   };
-  response.cookies.set("__Secure-next-auth.session-token", token, cookieOpts);
+  // Single customer cookie only. NextAuth's signOut() deletes exactly this
+  // name — never set a `__Secure-` duplicate, or signout leaves an orphan
+  // session that keeps the user "half logged in" forever.
   response.cookies.set("next-auth.session-token", token, { ...cookieOpts, secure: false });
+  // Clean up any legacy duplicate from older logins so old browsers recover.
+  response.cookies.set("__Secure-next-auth.session-token", "", {
+    ...cookieOpts,
+    maxAge: 0,
+  });
   return response;
 }
 

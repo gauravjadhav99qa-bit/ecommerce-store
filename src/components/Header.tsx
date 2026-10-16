@@ -422,7 +422,9 @@ export default function Header() {
                 )}
                 <button
                   onClick={() => {
-                    signOut();
+                    // Explicit callbackUrl forces a full reload to a logged-out
+                    // page, so no stale session state is cached across tabs.
+                    signOut({ callbackUrl: "/" });
                     setMobileMenuOpen(false);
                   }}
                   className="flex items-center gap-3 py-3 text-sm font-medium text-berry-dark"

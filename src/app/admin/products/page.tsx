@@ -66,6 +66,15 @@ export default function AdminProductsPage() {
   const [uploadError, setUploadError] = useState("");
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverError, setCoverError] = useState("");
+  // Prevent background scroll while the add/edit modal is open (mobile).
+  useEffect(() => {
+    if (!showModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showModal]);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -266,23 +275,78 @@ export default function AdminProductsPage() {
 
   const uploadFile = async (file: File) => {
     if (!editingProduct) return;
+    // Client-side validation so users get a clear message, not a generic error.
+    if (!["application/pdf", "application/zip"].includes(file.type)) {
+      setUploadError("Only PDF and ZIP files are allowed");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError("File too large (max 50MB)");
+      return;
+    }
     setUploading(true);
     setUploadError("");
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch(`/api/admin/products/${editingProduct.id}/files`, {
+      const url = `/api/admin/products/${editingProduct.id}/files`;
+      // Ask the server how this file should be uploaded.
+      const initRes = await fetch(url, {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "init",
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+        }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setUploadError(data.error || "Upload failed");
-      } else {
-        await reload();
+      const init = await initRes.json().catch(() => ({}));
+      if (!initRes.ok) {
+        setUploadError(init.error || "Upload failed");
+        return;
       }
-    } catch {
-      setUploadError("Upload failed");
+
+      if (init.mode === "direct" && init.token) {
+        // Large-file path: upload straight to Blob with the server-issued
+        // client token, bypassing the serverless request-body limit, then
+        // commit the record. (Client `put` accepts a token; client `upload`
+        // only works against a handleUploadUrl route.)
+        const { put } = await import("@vercel/blob/client");
+        const blob = await put(init.pathname, file, {
+          access: "private",
+          token: init.token,
+          contentType: file.type,
+        });
+        const commitRes = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "commit",
+            storagePath: blob.pathname,
+            fileName: file.name,
+            mimeType: file.type,
+            sizeBytes: file.size,
+          }),
+        });
+        if (!commitRes.ok) {
+          const data = await commitRes.json().catch(() => ({}));
+          setUploadError(data.error || "Upload failed");
+          return;
+        }
+      } else {
+        // Small-file / local path: upload through the route.
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(url, { method: "POST", body: fd });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setUploadError(data.error || "Upload failed");
+          return;
+        }
+      }
+      await reload();
+    } catch (err) {
+      console.error("File upload error:", err);
+      setUploadError("Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -299,6 +363,15 @@ export default function AdminProductsPage() {
 
   const uploadCover = async (file: File) => {
     if (!editingProduct) return;
+    // Client-side validation so users get a clear message, not a generic error.
+    if (!["image/jpeg", "image/png", "image/webp", "image/svg+xml"].includes(file.type)) {
+      setCoverError("Only JPEG, PNG, WebP or SVG images are allowed");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setCoverError("Image too large (max 4MB)");
+      return;
+    }
     setUploadingCover(true);
     setCoverError("");
     try {
@@ -316,8 +389,9 @@ export default function AdminProductsPage() {
         if (data.url) setFormImages((prev) => (prev.includes(data.url) ? prev : [...prev, data.url]));
         await reload();
       }
-    } catch {
-      setCoverError("Cover upload failed");
+    } catch (err) {
+      console.error("Cover upload error:", err);
+      setCoverError("Cover upload failed. Please try again.");
     } finally {
       setUploadingCover(false);
     }
@@ -601,8 +675,8 @@ export default function AdminProductsPage() {
 
       {/* Product Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-[60] p-2 sm:p-4 overflow-y-auto flex justify-center items-start sm:items-center">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90dvh] my-auto overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between z-10">
               <h2 className="text-lg font-bold">
                 {editingProduct ? "Edit Product" : "Add Product"}
@@ -986,7 +1060,7 @@ export default function AdminProductsPage() {
                 {editingProduct && (
                   <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:border-gray-500 text-sm text-gray-600">
                     <Upload size={16} />
-                    {uploadingCover ? "Uploading cover..." : "Upload cover image (JPEG/PNG/WebP/SVG, max 5MB)"}
+                    {uploadingCover ? "Uploading cover..." : "Upload cover image (JPEG/PNG/WebP/SVG, max 4MB)"}
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/svg+xml"

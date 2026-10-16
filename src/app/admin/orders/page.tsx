@@ -45,6 +45,15 @@ export default function AdminOrdersPage() {
   const [dateTo, setDateTo] = useState("");
   const [editForm, setEditForm] = useState({ shippingName: "", shippingEmail: "", shippingPhone: "", shippingAddr: "" });
   const [saving, setSaving] = useState(false);
+  // Prevent background scroll while the order slide-over is open (mobile).
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [selectedOrder]);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -269,9 +278,9 @@ export default function AdminOrdersPage() {
 
       {/* Order Detail Slide-over */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-[60] flex justify-end">
           <div className="absolute inset-0 bg-black/30" onClick={() => setSelectedOrder(null)} />
-          <div className="relative w-full max-w-lg bg-white shadow-xl overflow-y-auto">
+          <div className="relative w-full max-w-lg h-full max-h-[100dvh] bg-white shadow-xl overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
               <div>
                 <h2 className="text-lg font-bold">{selectedOrder.orderNumber}</h2>
