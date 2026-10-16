@@ -49,3 +49,6 @@ devserver.log
 data/files/
 *.log
 .env*
+
+# generated mandala artwork (regenerate with scripts/gen_mandalas.py)
+scripts/out_mandalas/

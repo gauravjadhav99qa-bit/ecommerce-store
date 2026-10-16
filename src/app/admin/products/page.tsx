@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Plus,
   Pencil,
@@ -423,18 +424,27 @@ export default function AdminProductsPage() {
             {filtered.length} product{filtered.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setEditingProduct(null);
-            setShowModal(true);
-          }}
-          className="flex items-center gap-2 bg-gray-900 text-white px-3 sm:px-4 py-2.5 rounded-lg hover:bg-gray-700 text-sm min-h-[44px]"
-        >
-          <Plus size={16} />{" "}
-          <span className="hidden sm:inline">Add Product</span>
-          <span className="sm:hidden">Add</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/import"
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-3 sm:px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm min-h-[44px]"
+          >
+            <Upload size={16} /> <span className="hidden sm:inline">Bulk Import</span>
+            <span className="sm:hidden">Import</span>
+          </Link>
+          <button
+            onClick={() => {
+              resetForm();
+              setEditingProduct(null);
+              setShowModal(true);
+            }}
+            className="flex items-center gap-2 bg-gray-900 text-white px-3 sm:px-4 py-2.5 rounded-lg hover:bg-gray-700 text-sm min-h-[44px]"
+          >
+            <Plus size={16} />{" "}
+            <span className="hidden sm:inline">Add Product</span>
+            <span className="sm:hidden">Add</span>
+          </button>
+        </div>
       </div>
 
       <div className="relative mb-6">
