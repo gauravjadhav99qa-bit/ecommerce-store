@@ -221,7 +221,7 @@ async function main() {
         font: {
           fontDirs: ["C:\\Windows\\Fonts"],
           loadSystemFonts: true,
-          defaultFont: "Arial",
+          defaultFontFamily: "Arial",
         },
         fitTo: { mode: "width", value: W },
       });
