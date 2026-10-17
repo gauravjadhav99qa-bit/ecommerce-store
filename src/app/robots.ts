@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/api", "/account"],
+        disallow: ["/admin", "/api", "/account", "/track-order", "/download", "/order-confirmed"],
       },
     ],
     sitemap: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.gtshoppingonline.in"}/sitemap.xml`,
