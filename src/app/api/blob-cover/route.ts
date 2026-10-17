@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { issueSignedToken, presignUrl } from "@vercel/blob";
 import { getStorageMode } from "@/lib/storage";
 
-// Vercel Blob signed URLs expire in at most 7 days — stay safely under the cap.
-const SIGN_TTL_MS = 6 * 24 * 60 * 60 * 1000;
+// Keep signed URLs short-lived so a copied URL stops working quickly.
+const SIGN_TTL_MS = 60 * 60 * 1000;
 
 /**
  * GET — serves private cover images by redirecting to a freshly signed Blob
@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.redirect(presignedUrl, {
       status: 302,
-      // The signed URL is good for days; cache the redirect for ~23h.
-      headers: { "Cache-Control": "public, max-age=82800" },
+      // Match the short signed-URL TTL so stale redirects expire quickly.
+      headers: { "Cache-Control": "public, max-age=1800" },
     });
   } catch (error) {
     console.error("Cover sign error:", error);

@@ -47,7 +47,11 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
   };
 
   return (
-    <div>
+    <div
+      className="select-none"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       <div
         className="relative aspect-[2480/3508] bg-cream rounded-lg overflow-hidden flex items-center justify-center touch-pan-y select-none"
         onTouchStart={onTouchStart}
@@ -57,7 +61,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
         <img
           src={images[selected]}
           alt={`${name} — image ${selected + 1} of ${total}`}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain pointer-events-none"
           draggable={false}
         />
 
@@ -110,7 +114,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
               <img
                 src={img}
                 alt={`${name} ${i + 1}`}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain pointer-events-none"
                 draggable={false}
               />
             </button>
