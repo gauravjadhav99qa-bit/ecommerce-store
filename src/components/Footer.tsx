@@ -84,9 +84,9 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {[
                 { href: "/products", label: "All products" },
-                { href: "/products?category=animal-colouring", label: "Animal colouring" },
-                { href: "/products?category=kids-colouring", label: "Kids' colouring" },
-                { href: "/products?category=preschool-activity", label: "Preschool activity" },
+                { href: "/products?category=animals", label: "Animals" },
+                { href: "/products?category=fantasy", label: "Fantasy & unicorns" },
+                { href: "/products?category=alphabet", label: "Alphabet & letters" },
                 { href: "/products?category=bundles", label: "Bundles & deals" },
               ].map((link) => (
                 <li key={link.href}>

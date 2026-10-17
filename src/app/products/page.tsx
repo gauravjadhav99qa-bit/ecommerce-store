@@ -33,10 +33,10 @@ export default async function ProductsPage({
       : undefined;
 
   const AGE_TAG_MAP: Record<string, string[]> = {
-    "3-5": ["toddler", "preschool", "easy", "first colouring", "shapes", "colours", "alphabet", "numbers", "fine motor"],
-    "5-8": ["kids", "boys girls", "mazes", "dinosaurs", "unicorns", "space", "ocean", "farm", "kawaii"],
-    "8+": ["puzzles", "spot the difference", "fantasy", "dragons", "mandala", "adult"],
-    adult: ["adult", "mandala", "mindfulness", "stress relief", "planner", "journal", "wellness", "boho"],
+    "3-5": ["age:2-4", "age:5-8"],
+    "5-8": ["age:5-8", "age:9-12"],
+    "8+": ["age:9-12", "age:13+"],
+    adult: ["age:13+", "age:9-12"],
   };
 
   const ageTags = age ? AGE_TAG_MAP[age] : undefined;
@@ -57,7 +57,7 @@ export default async function ProductsPage({
       : {}),
     ...(maxPrice ? { price: { lte: maxPrice } } : {}),
     ...(ageTags
-      ? { AND: ageTags.map((t) => ({ tags: { contains: t, mode: "insensitive" as const } })) }
+      ? { OR: ageTags.map((t) => ({ tags: { contains: t, mode: "insensitive" as const } })) }
       : {}),
   };
 

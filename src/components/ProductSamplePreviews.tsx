@@ -1,22 +1,14 @@
-import { buildColouringSvg, pickPages } from "@/lib/colouring-pages";
-
-function hashSeed(input: string): number {
-  let h = 0;
-  for (let i = 0; i < input.length; i++) {
-    h = (h * 31 + input.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
-/** Renders 3 original interior sample pages as inline SVGs for a product. */
+/** Shows real interior sample pages (skips the designed cover at index 0). */
 export default function ProductSamplePreviews({
-  productId,
   productName,
+  images,
 }: {
-  productId: string;
   productName: string;
+  images: string[];
 }) {
-  const keys = pickPages(hashSeed(productId), 3);
+  // images[0] is the designed cover; interior pages start at 1.
+  const pages = images.slice(1, 4);
+  if (pages.length === 0) return null;
   return (
     <section className="mt-12 sm:mt-16" aria-label="Sample pages">
       <div className="text-center mb-6">
@@ -31,21 +23,20 @@ export default function ProductSamplePreviews({
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-        {keys.map((key, i) => (
+        {pages.map((src, i) => (
           <figure
-            key={`${key}-${i}`}
+            key={`${src}-${i}`}
             className="bg-white rounded-2xl border border-cream-dark p-3 shadow-sm"
           >
-            <div
-              className="rounded-xl overflow-hidden border border-cream-dark/60 bg-white"
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{
-                __html: buildColouringSvg(key).replace(
-                  'width="800" height="1000"',
-                  'width="100%" height="auto"'
-                ),
-              }}
-            />
+            <div className="rounded-xl overflow-hidden border border-cream-dark/60 bg-white aspect-[2480/3508]">
+              <img
+                src={src}
+                alt={`${productName} — sample page ${i + 1}`}
+                className="w-full h-full object-contain"
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
             <figcaption className="text-[11px] text-ink-soft/70 text-center mt-2">
               {productName} · page sample {i + 1}
             </figcaption>

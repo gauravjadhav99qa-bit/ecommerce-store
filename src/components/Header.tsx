@@ -146,9 +146,12 @@ export default function Header() {
   return (
     <>
       {/* Announcement bar */}
-      <div className="bg-ink text-cream text-center text-xs sm:text-sm py-2 px-4">
+      <Link
+        href="/products?category=bundles"
+        className="block bg-ink text-cream text-center text-xs sm:text-sm py-2 px-4 hover:bg-berry-dark transition-colors"
+      >
         <span className="font-medium">{announcement}</span>
-      </div>
+      </Link>
 
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-cream-dark shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

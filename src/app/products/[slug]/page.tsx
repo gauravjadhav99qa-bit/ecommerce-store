@@ -420,8 +420,8 @@ export default async function ProductDetailPage({
         </div>
 
         <ProductSamplePreviews
-          productId={product.id}
           productName={product.name}
+          images={images}
         />
 
         {/* Related */}

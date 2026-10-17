@@ -55,7 +55,7 @@ export default function NotFound() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {[
             { href: "/products?featured=1", label: "Bestsellers" },
-            { href: "/products?category=kids-colouring", label: "Kids colouring" },
+            { href: "/products?age=3-5", label: "Kids colouring" },
             { href: "/products?category=bundles", label: "Bundle deals" },
           ].map((l) => (
             <Link

@@ -17,15 +17,40 @@ import {
 export const dynamic = "force-dynamic";
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  "animal-colouring": "🐾",
-  "mandala-colouring": "🌸",
-  "kids-colouring": "🎨",
-  "dinosaur-fantasy": "🦄",
-  "alphabet-numbers": "🔤",
-  "preschool-activity": "🧸",
-  "puzzles-mazes": "🧩",
-  "educational-ebooks": "📖",
-  "planners-journals": "🗓️",
+  animals: "🐾",
+  sports: "⚽",
+  "world-cultures": "🌍",
+  holidays: "🎉",
+  mythology: "🏛️",
+  fantasy: "🦄",
+  "everyday-objects": "🏠",
+  vehicles: "🚗",
+  nature: "🌳",
+  geography: "🗺️",
+  alphabet: "🔤",
+  activities: "🧩",
+  "people-family": "👨‍👩‍👧",
+  food: "🍕",
+  seasons: "🍂",
+  dinosaurs: "🦕",
+  numbers: "🔢",
+  jobs: "🧑‍🚒",
+  religious: "🕊️",
+  music: "🎵",
+  space: "🚀",
+  ocean: "🐟",
+  aesthetics: "💄",
+  educational: "📖",
+  science: "🔬",
+  flowers: "🌸",
+  "adult-relaxation": "🧘",
+  "emotions-sel": "💛",
+  mandalas: "🎡",
+  shapes: "🔷",
+  "bugs-insects": "🦋",
+  history: "📜",
+  patterns: "🌀",
+  personalized: "✏️",
   bundles: "🎁",
 };
 
@@ -75,7 +100,10 @@ export default async function HomePage() {
     where: {
       isActive: true,
       isDigital: true,
-      category: { slug: { in: ["kids-colouring", "preschool-activity", "alphabet-numbers"] } },
+      OR: [
+        { tags: { contains: "age:2-4", mode: "insensitive" } },
+        { tags: { contains: "age:5-8", mode: "insensitive" } },
+      ],
     },
     take: 4,
     orderBy: { featured: "desc" },
@@ -96,16 +124,19 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-cream">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-cream via-cream to-[#F3E4D7]">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#FFE9F2] via-[#FFF7E6] to-[#E8F5E9]">
+        <div className="absolute top-8 left-6 text-3xl opacity-40 animate-bounce hidden sm:block" aria-hidden>🎨</div>
+        <div className="absolute top-16 right-10 text-3xl opacity-40 hidden sm:block" aria-hidden>🖍️</div>
+        <div className="absolute bottom-10 left-1/3 text-3xl opacity-40 hidden sm:block" aria-hidden>✏️</div>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 md:py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="animate-fade-up">
-              <span className="inline-flex items-center gap-1.5 bg-berry/10 text-berry text-xs font-bold px-3 py-1.5 rounded-full mb-5">
+              <span className="inline-flex items-center gap-1.5 bg-marigold/20 text-[#B26A00] text-xs font-bold px-3 py-1.5 rounded-full mb-5">
                 <Sparkles size={13} /> Printable PDFs · Instant download
               </span>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-ink mb-5 leading-[1.08]">
                 Colour, learn and
-                <span className="block text-berry">play — at home</span>
+                <span className="block bg-gradient-to-r from-berry via-[#E0568C] to-marigold bg-clip-text text-transparent">play — at home</span>
               </h1>
               <p className="text-ink-soft text-base sm:text-lg mb-8 max-w-lg leading-relaxed">
                 Printable colouring books, kids&apos; activity books, worksheets
@@ -121,9 +152,9 @@ export default async function HomePage() {
                 </Link>
                 <Link
                   href="/products?category=bundles"
-                  className="inline-flex items-center gap-2 border-2 border-ink/15 text-ink px-8 py-3.5 font-semibold hover:border-berry hover:text-berry transition-colors rounded-full text-sm"
+                  className="inline-flex items-center gap-2 border-2 border-marigold text-[#B26A00] bg-marigold/10 px-8 py-3.5 font-semibold hover:bg-marigold hover:text-ink transition-colors rounded-full text-sm"
                 >
-                  Bundle deals
+                  🎁 Bundle deals
                 </Link>
               </div>
             </div>
@@ -200,20 +231,30 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
-            {categories.slice(0, 10).map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/products?category=${cat.slug}`}
-                className="group bg-white rounded-2xl border border-cream-dark p-4 text-center hover:border-berry/40 hover:shadow-md transition-all"
-              >
-                <span className="text-3xl block mb-2">
-                  {CATEGORY_EMOJI[cat.slug] || "📄"}
-                </span>
-                <span className="text-xs font-semibold text-ink leading-tight block line-clamp-2 group-hover:text-berry transition-colors">
-                  {cat.name}
-                </span>
-              </Link>
-            ))}
+            {categories.slice(0, 10).map((cat, idx) => {
+              const tiles = [
+                "from-[#FFE0EC] to-[#FFF0F5] hover:from-[#FFD1E3] hover:to-[#FFE6F0]",
+                "from-[#FFF3D6] to-[#FFF9EC] hover:from-[#FFE9B8] hover:to-[#FFF4D9]",
+                "from-[#E0F2E1] to-[#F0F9F0] hover:from-[#CDE9CF] hover:to-[#E5F4E6]",
+                "from-[#E3F0FF] to-[#F0F7FF] hover:from-[#CFE4FF] hover:to-[#E5F1FF]",
+                "from-[#F3E5FF] to-[#FAF3FF] hover:from-[#E8D4FF] hover:to-[#F5EBFF]",
+                "from-[#FFE9D9] to-[#FFF5EE] hover:from-[#FFDCC2] hover:to-[#FFEEE2]",
+              ];
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/products?category=${cat.slug}`}
+                  className={`group bg-gradient-to-br ${tiles[idx % tiles.length]} rounded-2xl border border-white p-4 sm:p-5 text-center hover:shadow-lg hover:-translate-y-0.5 transition-all`}
+                >
+                  <span className="text-3xl sm:text-4xl block mb-2 group-hover:scale-110 transition-transform">
+                    {CATEGORY_EMOJI[cat.slug] || "📄"}
+                  </span>
+                  <span className="text-xs font-semibold text-ink leading-tight block line-clamp-2 group-hover:text-berry transition-colors">
+                    {cat.name}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -284,7 +325,7 @@ export default async function HomePage() {
                 </h2>
               </div>
               <Link
-                href="/products?category=preschool-activity"
+                href="/products?age=3-5"
                 className="text-sm font-semibold text-berry hover:text-berry-dark hidden sm:block"
               >
                 View all →
